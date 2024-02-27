@@ -86,6 +86,12 @@ class TrainLoop:
             # save the model every 100 epochs
             if (epoch + 1) % 10 == 0:
                 torch.save(self.model.state_dict(), f'model_checkpoint_{epoch+1}.pth')
+            
+            # early stopping
+            if valid_loss < 0.01:
+                print('Early stopping')
+                torch.save(self.model.state_dict(), f'early_stop_{epoch+1}.pth')
+                break
 
 # Create the model
 model = FullyConnectedNetwork().to(device)
