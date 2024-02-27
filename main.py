@@ -76,15 +76,15 @@ class TrainLoop:
         for epoch in range(num_epochs):
             train_loss = self.train_epoch()
             valid_loss = self.validate_epoch()
-            progress_bar = tqdm(range(num_epochs), desc='Training Progress')
-            for epoch in progress_bar:
-                train_loss = self.train_epoch()
-                valid_loss = self.validate_epoch()
+            # progress_bar = tqdm(range(num_epochs), desc='Training Progress')
+            # for epoch in progress_bar:
+            #     train_loss = self.train_epoch()
+            #     valid_loss = self.validate_epoch()
                 
-                progress_bar.set_postfix({'Train Loss': train_loss, 'Valid Loss': valid_loss})
+            #     progress_bar.set_postfix({'Train Loss': train_loss, 'Valid Loss': valid_loss})
             print(f'Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Valid Loss: {valid_loss:.4f}')
             # save the model every 100 epochs
-            if (epoch + 1) % 100 == 0:
+            if (epoch + 1) % 10 == 0:
                 torch.save(self.model.state_dict(), f'model_checkpoint_{epoch+1}.pth')
 
 # Create the model
@@ -93,10 +93,10 @@ print('model created')
 
 # Define the loss function and optimizer
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
 # Create the training loop
 train_loop = TrainLoop(model, train_loader, valid_loader, criterion, optimizer, device)
 
 if __name__ == '__main__':
-    train_loop.run(1000)
+    train_loop.run(100)
