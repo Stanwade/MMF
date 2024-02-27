@@ -44,15 +44,17 @@ class ResBlock(nn.Module):
 class FullyConnectedNetwork(nn.Module):
     def __init__(self):
         super(FullyConnectedNetwork, self).__init__()
+        self.norm1 = nn.BatchNorm2d(1)
         self.flatten = nn.Flatten()
         self.linear_act_stack = nn.Sequential(
             nn.Linear(1*100*100, 512),
-            nn.SELU(),
+            nn.Mish(),
             nn.Linear(512, 1*16*16),
             nn.Mish()
         )
 
     def forward(self, x):
+        x = self.norm1(x)
         x = self.flatten(x)
         logits = self.linear_act_stack(x)
         return logits.view(-1, 1, 16, 16)
