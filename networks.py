@@ -47,7 +47,7 @@ class FullyConnectedNetwork(nn.Module):
         self.flatten = nn.Flatten()
         self.linear_act_stack = nn.Sequential(
             nn.Linear(1*100*100, 512),
-            nn.Mish(),
+            nn.SELU(),
             nn.Linear(512, 1*16*16),
             nn.Mish()
         )
