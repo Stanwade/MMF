@@ -35,7 +35,7 @@ if __name__ == '__main__':
         'activation': 'lrelu',
         'with_attn': False,
         'mid_attn': False,
-        'down_up_sample': True
+        'down_up_sample': False
     }
     
     # set modelcheckpoint config
