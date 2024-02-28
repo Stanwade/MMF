@@ -53,13 +53,13 @@ class SimpleDiffusion(pl.LightningModule):
         
         model_out = self.unet(xt, t)
         val_loss = F.mse_loss(model_out, target)
-        self.log('val_loss', val_loss)
+        self.log('val_loss', val_loss, sync_dist=True)
         return val_loss
     
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = optim.AdamW(self.parameters(), lr=1e-4)
         return optimizer
-    
+
 if __name__ == '__main__':
     unet_config = {
         'blocks': 2,

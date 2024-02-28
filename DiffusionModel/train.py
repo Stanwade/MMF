@@ -29,10 +29,10 @@ if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
         'img_channels': 1,
-        'base_channels': 4,
+        'base_channels': 8,
         'ch_mult': [1,2,4,4],
         'norm_type': 'batchnorm',
-        'activation': 'lrelu',
+        'activation': 'mish',
         'with_attn': False,
         'mid_attn': False,
         'down_up_sample': False
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     # set modelcheckpoint config
     model_checkpoint = ModelCheckpoint(
         monitor='val_loss',
-        filename='{epoch}-{val_loss:.2f}',
+        filename='{epoch}-{val_loss:.4f}',
         dirpath='DiffusionModel/ckpts',
         mode='min',
         every_n_epochs=10,
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     train_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=True)
     validation_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=False)
     # create loader
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    validation_loader = DataLoader(validation_dataset, batch_size=32, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=96)
+    validation_loader = DataLoader(validation_dataset, batch_size=32, shuffle=False, num_workers=96)
     
     train_diffusion_model(model, train_loader, validation_loader, callbacks=[model_checkpoint])
