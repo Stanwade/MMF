@@ -43,6 +43,19 @@ class SimpleDiffusion(pl.LightningModule):
         loss = F.mse_loss(model_out, target)
         return loss
     
+    def validation_step(self, batch, batch_idx):
+        x, _ = batch
+        noise = torch.randn_like(x)
+        t = torch.rand((x.size(0)),device=x.device)
+        
+        xt = (1 - t.view(-1, 1, 1, 1)) * x + t.view(-1, 1, 1, 1) * noise
+        target = x - noise
+        
+        model_out = self.unet(xt, t)
+        val_loss = F.mse_loss(model_out, target)
+        self.log('val_loss', val_loss)
+        return val_loss
+    
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
