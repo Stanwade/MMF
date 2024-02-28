@@ -15,7 +15,7 @@ else:
     model = FullyConnectedNetwork()
 
 # 加载模型状态字典
-state_dict = torch.load('model_checkpoint_100.pth', 
+state_dict = torch.load('model_checkpoint_500.pth', 
                         map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 # 调整状态字典中的键，去除'module.'前缀
 new_state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
