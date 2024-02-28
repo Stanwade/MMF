@@ -83,37 +83,39 @@ class DiffusionModel(pl.LightningModule):
             product *= alphas[i]
             alpha_bars[i] = product
         
-        self.alpha_bars = alpha_bars
+        self.register_buffer('alpha_bars',alpha_bars)
         
-    def sample_forward_step(self, xt, t, eps=None):
-        self.alpha_bars = self.alpha_bars.to(device=xt.device)
-        alpha_bar = self.alpha_bars[t].reshape(-1, 1, 1, 1)
-        if eps is None:
-            eps = torch.randn_like(xt)
-        else:
-            eps = eps
-        xt = torch.sqrt(1 - alpha_bar) * xt + torch.sqrt(alpha_bar) * eps
-        return xt
+        
+        
+    def sample_forward(self, xt, t, eps=None):
+        with torch.no_grad():
+            alpha_bar = self.alpha_bars[t].reshape(-1, 1, 1, 1)
+            if eps is None:
+                eps = torch.randn_like(xt)
+            else:
+                eps = eps
+            xt = torch.sqrt(1 - alpha_bar) * xt + torch.sqrt(alpha_bar) * eps
+            return xt
     
     def training_step(self, batch, batch_idx):
         x, _ = batch
         eps = torch.randn_like(x)
-        t = torch.randint(0, self.n_steps, (x.size(0),),device=x.device)
+        t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         
-        xt = self.sample_forward_step(x, t, eps)
+        xt = self.sample_forward(x, t, eps)
         
         eps_theta = self.unet(xt, t)
         
         train_loss = F.mse_loss(eps_theta, eps)
-        # self.log('train_loss', train_loss, sync_dist=True)
+        self.log('train_loss', train_loss, sync_dist=True)
         return train_loss
     
     def validation_step(self, batch, batch_idx):
         x, _ = batch
         eps = torch.randn_like(x)
-        t = torch.randint(0, self.n_steps, (x.size(0),),device=x.device)
+        t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         
-        xt = self.sample_forward_step(x, t, eps)
+        xt = self.sample_forward(x, t, eps)
         
         eps_theta = self.unet(xt, t)
         
@@ -142,7 +144,7 @@ if __name__ == '__main__':
         'mid_attn': True,
         'down_up_sample': True
     }
-    model = DiffusionModel(unet_config)
+    model = SimpleDiffusion(unet_config)
     
     batch = [torch.randn(3, 3, 64, 64),torch.rand(4)]
     loss = model.training_step(batch, 0)
