@@ -42,7 +42,7 @@ if __name__ == '__main__':
     model_checkpoint = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.2f}',
-        dirpath='ckpts',
+        dirpath='DiffusionModel/ckpts',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
