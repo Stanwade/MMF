@@ -86,6 +86,7 @@ class DiffusionModel(pl.LightningModule):
         self.alpha_bars = alpha_bars
         
     def sample_forward_step(self, xt, t, eps=None):
+        self.alpha_bars = self.alpha_bars.to(device=xt.device)
         alpha_bar = self.alpha_bars[t].reshape(-1, 1, 1, 1)
         if eps is None:
             eps = torch.randn_like(xt)
@@ -97,20 +98,20 @@ class DiffusionModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, _ = batch
         eps = torch.randn_like(x)
-        t = torch.randint(0, self.n_steps, (x.size(0),))
+        t = torch.randint(0, self.n_steps, (x.size(0),),device=x.device)
         
         xt = self.sample_forward_step(x, t, eps)
         
         eps_theta = self.unet(xt, t)
         
         train_loss = F.mse_loss(eps_theta, eps)
-        self.log('train_loss', train_loss, sync_dist=True)
+        # self.log('train_loss', train_loss, sync_dist=True)
         return train_loss
     
     def validation_step(self, batch, batch_idx):
         x, _ = batch
         eps = torch.randn_like(x)
-        t = torch.randint(0, self.n_steps, (x.size(0),))
+        t = torch.randint(0, self.n_steps, (x.size(0),),device=x.device)
         
         xt = self.sample_forward_step(x, t, eps)
         

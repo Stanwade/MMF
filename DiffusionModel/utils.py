@@ -23,5 +23,7 @@ def create_activation(act_type="relu"):
         return nn.Mish()
     elif act_type == "lrelu":
         return nn.LeakyReLU()
+    elif act_type == "silu":
+        return nn.SiLU()
     else:
         raise NotImplementedError

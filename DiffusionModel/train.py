@@ -14,7 +14,7 @@ from datasets import MMFDataset
 # train.py
 
 def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_epochs=100, callbacks=[]):
-    trainer = Trainer(max_epochs=num_epochs,callbacks=callbacks)
+    trainer = Trainer(max_epochs=num_epochs, callbacks=callbacks)
     diffusion_model_trainer = diffusion_model
     trainer.fit(diffusion_model_trainer,
                 train_dataloaders=train_loader,
@@ -29,12 +29,12 @@ if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
         'img_channels': 1,
-        'base_channels': 8,
+        'base_channels': 4,
         'ch_mult': [1,2,4,4],
         'norm_type': 'batchnorm',
-        'activation': 'mish',
-        'with_attn': False,
-        'mid_attn': False,
+        'activation': 'silu',
+        'with_attn': [False,False],
+        'mid_attn': True,
         'down_up_sample': False
     }
     
