@@ -1,4 +1,4 @@
-from DiffusionModel.diffusion import SimpleDiffusion
+from DiffusionModel.diffusion import DiffusionModel, SimpleDiffusion
 
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     )
     
     # create model
-    model = SimpleDiffusion(unet_config=unet_config)
+    model = DiffusionModel(unet_config=unet_config)
     
     # Load data
     train_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=True)
