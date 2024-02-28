@@ -24,6 +24,7 @@ def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_
 if __name__ == '__main__':
     # set config
     pl.seed_everything(0)
+    torch.cuda.empty_cache()
     
     # set unet configs
     unet_config = {
@@ -40,7 +41,7 @@ if __name__ == '__main__':
     
     # set modelcheckpoint config
     model_checkpoint = ModelCheckpoint(
-        monitor='val_loss',
+        monitor='train_loss',
         filename='{epoch}-{val_loss:.4f}',
         dirpath='DiffusionModel/ckpts',
         mode='min',
