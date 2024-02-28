@@ -14,12 +14,11 @@ from datasets import MMFDataset
 # train.py
 
 def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_epochs=100, callbacks=[]):
-    trainer = Trainer(max_epochs=num_epochs)
+    trainer = Trainer(max_epochs=num_epochs,callbacks=callbacks)
     diffusion_model_trainer = diffusion_model
     trainer.fit(diffusion_model_trainer,
                 train_dataloaders=train_loader,
-                val_dataloaders=validation_loader,
-                callbacks=callbacks)
+                val_dataloaders=validation_loader)
 
 
 if __name__ == '__main__':
@@ -34,8 +33,8 @@ if __name__ == '__main__':
         'ch_mult': [1,2,4,4],
         'norm_type': 'batchnorm',
         'activation': 'lrelu',
-        'with_attn': True,
-        'mid_attn': True,
+        'with_attn': False,
+        'mid_attn': False,
         'down_up_sample': True
     }
     
@@ -43,6 +42,7 @@ if __name__ == '__main__':
     model_checkpoint = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.2f}',
+        dirpath='ckpts',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,

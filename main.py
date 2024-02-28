@@ -106,3 +106,4 @@ train_loop = TrainLoop(model, train_loader, valid_loader, criterion, optimizer, 
 
 if __name__ == '__main__':
     train_loop.run(100)
+
