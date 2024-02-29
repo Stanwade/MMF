@@ -13,7 +13,7 @@ from datasets import MMFDataset
 
 # train.py
 
-def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_epochs=100, callbacks=[]):
+def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_epochs=1000, callbacks=[]):
     trainer = Trainer(max_epochs=num_epochs, callbacks=callbacks)
     diffusion_model_trainer = diffusion_model
     trainer.fit(diffusion_model_trainer,
@@ -30,17 +30,17 @@ if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
         'img_channels': 1,
-        'base_channels': 4,
+        'base_channels': 16,
         'ch_mult': [1,2,4,4],
         'norm_type': 'batchnorm',
         'activation': 'mish',
-        'with_attn': [False,False, True, True],
+        'with_attn': [False, True, True, True],
         'down_up_sample': False
     }
     
     # set modelcheckpoint config
     model_checkpoint = ModelCheckpoint(
-        monitor='train_loss',
+        monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
         dirpath='DiffusionModel/ckpts',
         mode='min',
