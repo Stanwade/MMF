@@ -9,6 +9,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torchvision import transforms
 from datasets import MMFDataset
 
 # train.py
@@ -52,9 +53,20 @@ if __name__ == '__main__':
     # create model
     model = DiffusionModel(unet_config=unet_config)
     
+    # define target transform pipeline, turn a [1,16,16] into [1,64,64]
+    target_pipeline = transforms.Compose([
+        transforms.Resize((64, 64), interpolation=transforms.InterpolationMode.NEAREST),
+        transforms.ToTensor()
+    ])
+    
+    
     # Load data
-    train_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=True)
-    validation_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=False)
+    train_dataset = MMFDataset(root='./datasets/100m_200/16x16/1',
+                               train=True,
+                               target_transform=target_pipeline)
+    validation_dataset = MMFDataset(root='./datasets/100m_200/16x16/1',
+                                    train=False,
+                                    target_transform=target_pipeline)
     # create loader
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=96)
     validation_loader = DataLoader(validation_dataset, batch_size=32, shuffle=False, num_workers=96)

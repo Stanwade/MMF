@@ -125,7 +125,16 @@ class DiffusionModel(pl.LightningModule):
         
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=1e-4)
-        return optimizer
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                         mode='min',
+                                                         factor=0.1,
+                                                         patience=5)
+        return {'optimizer': optimizer,
+                'lr_scheduler': {
+                    'scheduler': scheduler,
+                    'monitor': 'val_loss'
+                    }
+                }
             
             
             
