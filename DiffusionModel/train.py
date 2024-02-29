@@ -6,7 +6,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from datasets import MMFDataset
@@ -33,9 +33,8 @@ if __name__ == '__main__':
         'base_channels': 4,
         'ch_mult': [1,2,4,4],
         'norm_type': 'batchnorm',
-        'activation': 'silu',
-        'with_attn': [False,False],
-        'mid_attn': True,
+        'activation': 'mish',
+        'with_attn': [False,False, True, True],
         'down_up_sample': False
     }
     

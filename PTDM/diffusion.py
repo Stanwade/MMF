@@ -169,6 +169,19 @@ if __name__ == '__main__':
     from torch.utils.data import DataLoader
     from datasets import MMFDataset
     import time
+    
+    last_memory = 0
+    
+    def get_memory_total():
+        global last_memory
+        last_memory = torch.cuda.memory_allocated() / 1024 / 1024
+        return last_memory
+    
+    def get_memory_diff():
+        last = last_memory
+        total = get_memory_total()
+        return total - last, total
+    
     unet_config = {
         'blocks': 2,
         'img_channels': 1,
@@ -176,38 +189,47 @@ if __name__ == '__main__':
         'ch_mult': [1,2,4,4],
         'norm_type': 'batchnorm',
         'activation': 'lrelu',
-        'with_attn': True,
-        'mid_attn': True,
-        'down_up_sample': True
+        'with_attn': False,
+        'mid_attn': False,
+        'down_up_sample': False
     }
     myddpm = ddpm(unet_config,1000,0.0001,0.02)
-    model = myddpm.unet
+    model = myddpm.unet.to('cuda')
     
+    print(f'model to cuda: {get_memory_diff()}')
     epochs = 100
     
     # Load data
+    print('lodaing data')
     train_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=True)
     validation_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=False)
     # create loader
+    print('creating data loader')
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     validation_loader = DataLoader(validation_dataset, batch_size=32, shuffle=False)     
     
     # optimizer
+    print('creating optimizer')
     optimizer = optim.AdamW(model.parameters(), lr=1e-4)
     
     # train loop
     for i in range(epochs):
+        print(f'running epoch {i}')
         tick = time.time()
         total_loss = 0
         for batch in train_loader:
-            x, _ = batch
+            x = batch[0].to('cuda')
+            print(f'epoch {i} batch loaded: {get_memory_diff()}')
+            
             batchsize = x.size(0)
-            eps = torch.randn_like(x)
+            eps = torch.randn_like(x).to('cuda')
+            print(f'epoch {i} eps loaded: {get_memory_diff()}')
             t = torch.randint(0, myddpm.n_steps, (x.size(0),),device=x.device)
             xt = myddpm.sample_forward_step(x, t, eps)
             eps_theta = myddpm.unet(xt, t)
+            print(f'epoch {i} unet inference and intermediate: {get_memory_diff()}')
             train_loss = F.mse_loss(eps_theta, eps)
-            
+            exit('debug finished')
             train_loss.backward()
             optimizer.step()
             optimizer.zero_grad()

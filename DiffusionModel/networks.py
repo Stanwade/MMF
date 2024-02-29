@@ -211,7 +211,7 @@ class UNetLevel(nn.Module):
                  mid_channels: int,
                  time_emb_channels: int,
                  mid_block: nn.Module,
-                 with_attn: Union[bool, List[bool]] = False,
+                 with_attn: bool = False,
                  norm_type="batchnorm",
                  activation="lrelu",
                  down_up_sample: bool = True
@@ -220,22 +220,18 @@ class UNetLevel(nn.Module):
         self.downs = nn.ModuleList([])
         self.ups = nn.ModuleList([])
         
-        with_attn = [with_attn] * blocks if isinstance(with_attn, bool) else with_attn
         
-        if len(with_attn) != blocks:
-            raise ValueError(f"with_attn must be of length {blocks}")
-        
-        for i in range(blocks):
+        for _ in range(blocks):
             self.downs.append(ResAttnBlock(inout_channels,
                                            mid_channels,
                                            time_emb_channels,
-                                           with_attn=with_attn[i],
+                                           with_attn=with_attn,
                                            norm_type=norm_type,
                                            activation=activation))
             self.ups.insert(0, ResAttnBlock(mid_channels*2,
                                             inout_channels,
                                             time_emb_channels,
-                                            with_attn=with_attn[i],
+                                            with_attn=with_attn,
                                             norm_type=norm_type,
                                             activation=activation))
             inout_channels = mid_channels
@@ -276,16 +272,19 @@ class UNet(nn.Module):
         norm_type="batchnorm",
         activation="lrelu",
         with_attn: Union[bool, List[bool]] = False,
-        mid_attn: bool = False,
         down_up_sample: bool = True
     ):
         super(UNet, self).__init__()
         
         # dims = [base_channels, base_channels, base_channels*2, base_channels*4, base_channels*4]
-        dims = [base_channels] + [int(base_channels * mult) for mult in ch_mult]
-        in_out = list(zip(dims[:-1], dims[1:]))
-        self.img_channels = img_channels
         self.levels = len(ch_mult)
+        dims = [base_channels] + [int(base_channels * mult) for mult in ch_mult]
+        self.with_attn = [with_attn] * self.levels if isinstance(with_attn, bool) else with_attn
+        
+        in_out = list(zip(dims[:-1], dims[1:], self.with_attn[:-1]))
+        self.img_channels = img_channels
+        
+        
         
         self.in_proj = nn.Conv2d(img_channels, base_channels, 3, padding=1, stride=1)
         self.out_proj = nn.Sequential(
@@ -300,17 +299,22 @@ class UNet(nn.Module):
         
         # build unet
         # begin with middle block
-        if mid_attn:
-            now_blocks = ResAttnBlockMiddle(base_channels*ch_mult[-1], base_channels*ch_mult[-1], self.time_emb_dim, with_attn=with_attn, norm_type=norm_type, activation=activation)
+        if self.with_attn[-1]:
+            now_blocks = ResAttnBlockMiddle(base_channels*ch_mult[-1],
+                                            base_channels*ch_mult[-1],
+                                            self.time_emb_dim,
+                                            with_attn=self.with_attn[-1],
+                                            norm_type=norm_type,
+                                            activation=activation)
         else:
             now_blocks = ResBlock(base_channels*ch_mult[-1], base_channels*ch_mult[-1], self.time_emb_dim)
-        for inout_ch, mid_ch in reversed(in_out):
+        for inout_ch, mid_ch, attn in reversed(in_out):
             now_blocks = UNetLevel(blocks,
                                    inout_ch,
                                    mid_ch,
                                    self.time_emb_dim,
                                    mid_block=now_blocks,
-                                   with_attn=with_attn,
+                                   with_attn=attn,
                                    norm_type=norm_type,
                                    activation=activation,
                                    down_up_sample=down_up_sample)
@@ -342,12 +346,19 @@ if __name__ == "__main__":
     print(test_out.shape)
     print()
     
-    unet = UNet(2, 64, 64, [1,2,4,8],
-                with_attn=True,
-                mid_attn=True,
-                down_up_sample=True,
-                norm_type="batchnorm",
-                activation="mish")
+    unet_config = {
+        'blocks': 2,
+        'img_channels': 1,
+        'base_channels': 4,
+        'ch_mult': [1,2,4,4],
+        'norm_type': 'batchnorm',
+        'activation': 'lrelu',
+        'with_attn': [False,False,False,True],
+        'down_up_sample': False
+    }
+    
+    unet = UNet(**unet_config).to('cuda')
     test_out = unet(test_x, test_t)
+    print(f'hahaha: {torch.cuda.memory_allocated()}')
     print(test_out.shape)
     

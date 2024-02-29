@@ -98,7 +98,8 @@ class DiffusionModel(pl.LightningModule):
             return xt
     
     def training_step(self, batch, batch_idx):
-        x, _ = batch
+        _, x = batch
+        print(f'train step x shape {x.shape}')
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         
@@ -111,7 +112,7 @@ class DiffusionModel(pl.LightningModule):
         return train_loss
     
     def validation_step(self, batch, batch_idx):
-        x, _ = batch
+        _, x = batch
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         
@@ -135,18 +136,17 @@ class DiffusionModel(pl.LightningModule):
 if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
-        'img_channels': 3,
+        'img_channels': 1,
         'base_channels': 64,
         'ch_mult': [1,2,4,4],
         'norm_type': 'batchnorm',
         'activation': 'lrelu',
         'with_attn': True,
-        'mid_attn': True,
         'down_up_sample': True
     }
-    model = SimpleDiffusion(unet_config)
+    model = DiffusionModel(unet_config)
     
-    batch = [torch.randn(3, 3, 64, 64),torch.rand(4)]
+    batch = [torch.randn(32, 1, 16, 16),torch.rand(4)]
     loss = model.training_step(batch, 0)
     
     print('loss:',loss)
