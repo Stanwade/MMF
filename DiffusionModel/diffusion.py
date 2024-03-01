@@ -108,6 +108,10 @@ class DiffusionModel(pl.LightningModule):
         
         train_loss = F.mse_loss(eps_theta, eps)
         self.log('train_loss', train_loss, sync_dist=True)
+        
+        lr = self.trainer.optimizers[0].param_groups[0]['lr']
+        self.log('learning rate', lr, on_step=True, sync_dist=True)
+        
         return train_loss
     
     def validation_step(self, batch, batch_idx):

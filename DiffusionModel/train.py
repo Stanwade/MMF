@@ -14,7 +14,7 @@ from datasets import MMFDataset
 
 # train.py
 
-def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_epochs=1000, callbacks=[]):
+def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_epochs=100, callbacks=[]):
     trainer = Trainer(max_epochs=num_epochs, callbacks=callbacks)
     diffusion_model_trainer = diffusion_model
     trainer.fit(diffusion_model_trainer,
@@ -35,12 +35,12 @@ if __name__ == '__main__':
         'ch_mult': [1,2,4,4],
         'norm_type': 'batchnorm',
         'activation': 'mish',
-        'with_attn': [False, True, True, True],
+        'with_attn': [False, False, True, True],
         'down_up_sample': False
     }
     
     # set modelcheckpoint config
-    model_checkpoint = ModelCheckpoint(
+    model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
         dirpath='DiffusionModel/ckpts',
@@ -50,13 +50,20 @@ if __name__ == '__main__':
         save_last=True
     )
     
+    early_stop_callback = EarlyStopping(
+        monitor = 'val_loss',
+        min_delta = 0.00,
+        patience = 3,
+        verbose = False,
+        mode= 'min'
+    )
+    
     # create model
     model = DiffusionModel(unet_config=unet_config)
     
     # define target transform pipeline, turn a [1,16,16] into [1,64,64]
     target_pipeline = transforms.Compose([
-        transforms.Resize((64, 64), interpolation=transforms.InterpolationMode.NEAREST),
-        transforms.ToTensor()
+        transforms.Resize((64, 64), interpolation=transforms.InterpolationMode.NEAREST)
     ])
     
     
@@ -71,4 +78,8 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=96)
     validation_loader = DataLoader(validation_dataset, batch_size=32, shuffle=False, num_workers=96)
     
-    train_diffusion_model(model, train_loader, validation_loader, callbacks=[model_checkpoint])
+    train_diffusion_model(model,
+                          train_loader,
+                          validation_loader,
+                          num_epochs=150,
+                          callbacks=[model_checkpoint_callback, early_stop_callback])
