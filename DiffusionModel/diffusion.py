@@ -83,8 +83,7 @@ class DiffusionModel(pl.LightningModule):
             product *= alphas[i]
             alpha_bars[i] = product
         
-        self.register_buffer('alpha_bars',alpha_bars)
-        
+        self.alpha_bars = alpha_bars
         
         
     def sample_forward(self, xt, t, eps=None):
@@ -140,11 +139,68 @@ class DiffusionModel(pl.LightningModule):
                     }
                 }
             
-            
-            
-    
+    def sample_backward_step(self, xt, t, net, simple_var=False):
+        batch_size = xt.shape[0]
+        t_tensor = torch.tensor([t]*batch_size, dtype=torch.long, device=xt.device).unsqueeze(1) # (n, 1)
+        eps = net(xt, t_tensor)
         
+        if t == 0:
+            noise = torch.zeros_like(eps)
+        else:
+            if simple_var:
+                var = self.betas[t]
+            else:
+                var = (1 - self.alpha_bars[t - 1]) / (1 - self.alpha_bars[t]) * self.betas[t]
+            noise = torch.randn_like(xt) * torch.sqrt(var)
+            
+        mean = (xt - (1 - self.alphas[t]) / torch.sqrt(1 - self.alpha_bars[t]) * eps) / torch.sqrt(self.alphas[t])
+        xt = mean + noise
+        
+        return xt
+    
+    def sample_backward(self, img, net, device, simple_var=False):
+        xt = img.to(device)
+        net = net.to(device)
+        
+        for t in reversed(range(self.n_steps)):
+            xt = self.sample_backward_step(xt, t, net, simple_var)
+            
+        return xt
+    
+    def sample_backward_ddim(self, img, net, device, ddim_steps=20, eta=0.0, simple_var=False):
+        if simple_var:
+            eta = 1
+        ts = torch.linspace(self.n_steps - 1, 0, ddim_steps + 1) # size: (ddim_steps + 1)
 
+        x = img.to(device)
+        batch_size = x.shape[0]
+        net = net.to(device)
+        
+        for i in reversed(range(1, ddim_steps + 1)):
+            current_t = ts[i - 1] - 1
+            prev_t = ts[i] - 1
+            
+            # notation ab for alpha bar
+            ab_current = self.alpha_bars[current_t]
+            ab_prev = self.alpha_bars[prev_t] if prev_t >= 0 else 1
+
+            t_tensor = torch.tensor([current_t] * batch_size,
+                                    dtype=torch.long).to(device).unsqueeze(1) # (n, 1)
+            eps = net(x, t_tensor)
+            var = eta * (1 - ab_prev) / (1 - ab_current) * (1 - ab_current / ab_prev)
+            noise = torch.randn_like(x)
+
+            first_term = (ab_prev / ab_current)**0.5 * x
+            second_term = ((1 - ab_prev - var)**0.5 -
+                           (ab_prev * (1 - ab_current) / ab_current)**0.5) * eps
+            if simple_var:
+                third_term = (1 - ab_current / ab_prev)**0.5 * noise
+            else:
+                third_term = var**0.5 * noise
+            x = first_term + second_term + third_term
+
+        return x
+        
 if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
