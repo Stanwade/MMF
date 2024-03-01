@@ -66,7 +66,10 @@ class MMFDataset(Dataset):
     def __getitem__(self, idx):
         image = self.data[idx] / 255
         target = self.targets[idx].reshape(-1, 16)
-
+        
+        image = image.unsqueeze(0)
+        target = target.unsqueeze(0).float()
+        
         if self.transform:
             image = self.transform(image)
 
@@ -74,9 +77,16 @@ class MMFDataset(Dataset):
             target = self.target_transform(target)
 
         
-        return image.unsqueeze(0), target.float().unsqueeze(0)
+        return image, target
 
 if __name__ == '__main__':
-    dataset = MMFDataset(root='./datasets/100m_200/16x16/1/')
+    
+    target_pipeline = transforms.Compose([
+        transforms.Resize((64, 64), interpolation=transforms.InterpolationMode.NEAREST)
+    ])
+    
+    dataset = MMFDataset(root='./datasets/100m_200/16x16/1/',target_transform=target_pipeline)
     a = dataset.__getitem__(0)
+    print(f'a[0] shape {a[0].shape}')
+    print(f'a[1] shape {a[1].shape}')
     exit('finished debug!')
