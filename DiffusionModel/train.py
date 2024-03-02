@@ -43,7 +43,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='DiffusionModel/ckpts',
+        dirpath='DiffusionModel/ckpts2',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -81,5 +81,5 @@ if __name__ == '__main__':
     train_diffusion_model(model,
                           train_loader,
                           validation_loader,
-                          num_epochs=150,
+                          num_epochs=200,
                           callbacks=[model_checkpoint_callback, early_stop_callback])

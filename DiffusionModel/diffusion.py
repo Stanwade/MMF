@@ -67,6 +67,7 @@ class DiffusionModel(pl.LightningModule):
                  min_beta: float = 0.0001,
                  max_beta: float = 0.02):
         super().__init__()
+        self.save_hyperparameters()
         self.unet = UNet(**unet_config)
         self.n_steps = n_steps
         self.min_beta = min_beta
@@ -128,7 +129,7 @@ class DiffusionModel(pl.LightningModule):
         return val_loss
         
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=1e-4)
+        optimizer = optim.AdamW(self.parameters())
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                          mode='min',
                                                          factor=0.1,
