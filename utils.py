@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 from inspect import isfunction
 
 
-def plot_imgs(inputs,name:str, dir:str='imgs'):
-    fig, axes = plt.subplots(nrows=1, ncols=inputs.size(0), figsize=(16, 16))
+def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16)):
+    fig, axes = plt.subplots(nrows=1, ncols=inputs.size(0), figsize=figsize)
     for idx in range(inputs.size(0)):
         axes[idx].imshow(inputs[idx].squeeze().numpy(), cmap='gray')
         axes[idx].set_xticks([])

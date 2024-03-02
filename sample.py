@@ -2,9 +2,12 @@ import torch
 from torch import nn
 from datasets import MMFDataset
 from torch.utils.data import DataLoader
+from torchvision import transforms
 from networks import FullyConnectedNetwork, OneLayer
 import matplotlib.pyplot as plt
 from utils import plot_imgs
+
+from DiffusionModel.diffusion import DiffusionModel
 
 OneLayer = False
 
@@ -41,7 +44,23 @@ plot_imgs(labels, name='labels')
 # run inference
 model.eval()
 with torch.no_grad():
-    outputs = model(inputs)
+    outputs1 = model(inputs)
     
 # plot outputs
-plot_imgs(outputs, name='outputs')
+plot_imgs(outputs1, name='outputs_1')
+
+
+# Second Model
+
+print('loading diffusion model...')
+model = DiffusionModel.load_from_checkpoint('DiffusionModel/ckpts2/epoch=9-val_loss=0.0115.ckpt')
+
+resize_16_64 = transforms.Resize((64,64),interpolation=transforms.InterpolationMode.NEAREST_EXACT)
+xs_2nd = resize_16_64(outputs1)
+
+
+outputs2 = model.sample_backward(xs_2nd, model.unet, 'cuda')
+# out_ddim = model.sample_backward_ddim(ys, model.unet, 'cuda')
+outputs2 = outputs2.to('cpu')
+
+plot_imgs(outputs2, name='outputs_2', figsize=(64, 64))

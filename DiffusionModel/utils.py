@@ -1,5 +1,7 @@
 from inspect import isfunction
 import torch.nn as nn
+import matplotlib.pyplot as plt
+from inspect import isfunction
 
 def default(val, d):
     if val is not None:
@@ -27,3 +29,18 @@ def create_activation(act_type="relu"):
         return nn.SiLU()
     else:
         raise NotImplementedError
+
+
+def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16)):
+    fig, axes = plt.subplots(nrows=1, ncols=inputs.size(0), figsize=figsize)
+    for idx in range(inputs.size(0)):
+        axes[idx].imshow(inputs[idx].squeeze().numpy(), cmap='gray')
+        axes[idx].set_xticks([])
+        axes[idx].set_yticks([])
+    plt.tight_layout()
+    plt.savefig(f'{dir}/{name}.png')
+    
+def default(val, d):
+    if val is not None:
+        return val
+    return d() if isfunction(d) else d
