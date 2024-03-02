@@ -84,7 +84,7 @@ class DiffusionModel(pl.LightningModule):
             product *= alphas[i]
             alpha_bars[i] = product
         
-        self.alpha_bars = alpha_bars
+        self.register_buffer('alpha_bars',alpha_bars)
         
         
     def sample_forward(self, xt, t, eps=None):
