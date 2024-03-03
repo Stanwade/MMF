@@ -2,7 +2,9 @@ from torch.utils.data import Dataset
 import torch
 import numpy as np
 import os
+import torchvision
 from torchvision import transforms
+from torchvision.datasets import MNIST
 
 class MMF100m200Dataset(Dataset):
     
@@ -79,14 +81,65 @@ class MMFDataset(Dataset):
         
         return image, target
 
+
+class MNISTDataset(Dataset):
+    """MNIST Dataset."""
+
+    def __init__(self, root='./datasets', train=True, transform=None, download=False):
+        """
+        Args:
+            root (string): Root directory of dataset where ``MNIST/processed/training.pt``
+                and  ``MNIST/processed/test.pt`` exist.
+            train (bool, optional): If True, creates dataset from ``training.pt``,
+                otherwise from ``test.pt``.
+            transform (callable, optional): A function/transform that  takes in an PIL image
+                and returns a transformed version. E.g, ``transforms.ToTensor``
+            download (bool, optional): If true, downloads the dataset from the internet and
+                puts it in root directory. If dataset is already downloaded, it is not
+                downloaded again.
+        """
+        self.train = train  # training set or test set
+        self.transform = transform
+
+        self.data_folder = os.path.join(root, 'MNIST', 'raw')
+
+        # download the data
+        if download:
+            MNIST(root, train=self.train, transform=transform, download=True)
+
+        # load the data
+        else:
+            self.data = MNIST(root, train=self.train, transform=transform, download=False)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        img = self.data[idx][0]
+        pipeline = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: x * 2 - 1)
+        ])
+        return pipeline(img)
+
+
+
+
+
 if __name__ == '__main__':
     
-    target_pipeline = transforms.Compose([
-        transforms.Resize((64, 64), interpolation=transforms.InterpolationMode.NEAREST)
-    ])
+    img_size = 32
+    print(torchvision.__version__)
     
-    dataset = MMFDataset(root='./datasets/100m_200/16x16/1/',target_transform=target_pipeline)
-    a = dataset.__getitem__(0)
-    print(f'a[0] shape {a[0].shape}')
-    print(f'a[1] shape {a[1].shape}')
-    exit('finished debug!')
+    target_pipeline = transforms.Compose([
+        
+        transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
+                                         
+                                         
+        ])
+    
+    dataset = MNISTDataset(root='./datasets', train=True, transform=target_pipeline)
+    
+    print(len(dataset))
+    print(dataset[0][0].shape)
+    print(dataset[0][0])
