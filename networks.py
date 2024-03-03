@@ -18,6 +18,27 @@ class TimeEmbedding(nn.Module):
         emb = torch.sin(time / (10000 ** (torch.arange(0, 2 * self.embedding_dim, 2) / self.embedding_dim)))
         return emb
 
+class PositionalEncoding(nn.Module):
+    def __init__(self, max_seq_len, d_model):
+        super().__init__()
+        
+        assert d_model % 2 == 0
+        
+        pe = torch.zeros(max_seq_len, d_model)
+        i_seq = torch.linspace(0, max_seq_len - 1, max_seq_len)
+        j_seq = torch.linspace(0, d_model - 2, d_model // 2)
+        pos, two_i = torch.meshgrid(i_seq, j_seq)
+        pe_2i = torch.sin(pos / 10000**(two_i / d_model))
+        pe_2i_1 = torch.cos(pos / 10000**(two_i / d_model))
+        pe = torch.stack((pe_2i, pe_2i_1), 2).reshape(max_seq_len, d_model)
+
+        self.embedding = nn.Embedding(max_seq_len, d_model)
+        self.embedding.weight.data = pe
+        self.embedding.requires_grad_(False)
+        
+    def forward(self, t):
+        return self.embedding(t)
+
 class ResBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super(ResBlock, self).__init__()

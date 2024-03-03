@@ -105,7 +105,7 @@ class MNISTDataset(Dataset):
 
         # download the data
         if download:
-            MNIST(root, train=self.train, transform=transform, download=True)
+            self.data = MNIST(root, train=self.train, transform=transform, download=True)
 
         # load the data
         else:
@@ -116,11 +116,12 @@ class MNISTDataset(Dataset):
 
     def __getitem__(self, idx):
         img = self.data[idx][0]
+        label = self.data[idx][1]
         pipeline = transforms.Compose([
             transforms.ToTensor(),
             transforms.Lambda(lambda x: x * 2 - 1)
         ])
-        return pipeline(img)
+        return label, pipeline(img)
 
 
 
@@ -141,5 +142,8 @@ if __name__ == '__main__':
     dataset = MNISTDataset(root='./datasets', train=True, transform=target_pipeline)
     
     print(len(dataset))
-    print(dataset[0][0].shape)
     print(dataset[0][0])
+    print(dataset[0][1].shape)
+    print(dataset[0][1])
+    print(torch.max(dataset[0][1]))
+    print(torch.min(dataset[0][1]))

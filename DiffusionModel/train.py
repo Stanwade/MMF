@@ -32,10 +32,10 @@ if __name__ == '__main__':
         'blocks': 2,
         'img_channels': 1,
         'base_channels': 32,
-        'ch_mult': [1,2,4,4],
+        'ch_mult': [1,2,4,8,8],
         'norm_type': 'batchnorm',
         'activation': 'mish',
-        'with_attn': [True, True, False, False],
+        'with_attn': [True, True, True, False, False],
         'down_up_sample': False
     }
     
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='DiffusionModel/ckpts2',
+        dirpath='DiffusionModel/ckpts3',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -75,8 +75,8 @@ if __name__ == '__main__':
         validation_dataset = MNISTDataset(root='./datasets', train=False, transform=target_pipeline)
         
         # create loader
-        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=96)
-        validation_loader = DataLoader(validation_dataset, batch_size=64, shuffle=False, num_workers=96)
+        train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=96)
+        validation_loader = DataLoader(validation_dataset, batch_size=128, shuffle=False, num_workers=96)
         
     else:
         # Load data
@@ -93,5 +93,5 @@ if __name__ == '__main__':
     train_diffusion_model(model,
                           train_loader,
                           validation_loader,
-                          num_epochs=200,
+                          num_epochs=100,
                           callbacks=[model_checkpoint_callback])

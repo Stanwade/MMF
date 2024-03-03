@@ -68,7 +68,7 @@ class DiffusionModel(pl.LightningModule):
                  max_beta: float = 0.02):
         super().__init__()
         self.save_hyperparameters()
-        self.unet = UNet(**unet_config)
+        self.unet = UNet(**unet_config, n_steps=n_steps)
         self.n_steps = n_steps
         self.min_beta = min_beta
         self.max_beta = max_beta
@@ -166,9 +166,9 @@ class DiffusionModel(pl.LightningModule):
         with torch.no_grad():
             xt = img.to(device)
             net = net.to(device)
-        
+            print(f'xt shape {xt.shape}')
             for t in reversed(range(self.n_steps)):
-                print(f'ddpm sampling step {t}')
+                # print(f'ddpm sampling step {t}')
                 xt = self.sample_backward_step(xt, t, net, simple_var)
             
             return xt
@@ -178,7 +178,7 @@ class DiffusionModel(pl.LightningModule):
         with torch.no_grad():
             if simple_var:
                 eta = 1
-            ts = torch.linspace(self.n_steps - 1, 0, ddim_steps + 1) # size: (ddim_steps + 1)
+            ts = torch.linspace(self.n_steps - 1, 0, ddim_steps + 1).unsqueeze(1) # size: (ddim_steps + 1)
 
             x = img.to(device)
             batch_size = x.shape[0]

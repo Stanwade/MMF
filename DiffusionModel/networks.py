@@ -32,6 +32,27 @@ class TimeEmbedding(nn.Module):
         return emb
         
 
+class PositionalEncoding(nn.Module):
+    def __init__(self, max_seq_len, d_model):
+        super().__init__()
+        
+        assert d_model % 2 == 0
+        
+        pe = torch.zeros(max_seq_len, d_model)
+        i_seq = torch.linspace(0, max_seq_len - 1, max_seq_len)
+        j_seq = torch.linspace(0, d_model - 2, d_model // 2)
+        pos, two_i = torch.meshgrid(i_seq, j_seq)
+        pe_2i = torch.sin(pos / 10000**(two_i / d_model))
+        pe_2i_1 = torch.cos(pos / 10000**(two_i / d_model))
+        pe = torch.stack((pe_2i, pe_2i_1), 2).reshape(max_seq_len, d_model)
+
+        self.embedding = nn.Embedding(max_seq_len, d_model)
+        self.embedding.weight.data = pe
+        self.embedding.requires_grad_(False)
+        
+    def forward(self, t):
+        return self.embedding(t)
+
 
 class ResBlock(nn.Module):
     def __init__(self,
@@ -269,6 +290,8 @@ class UNet(nn.Module):
         img_channels:int,
         base_channels:int = 64,
         ch_mult: list = [1,2,4,4],
+        pe_dim = 10,
+        n_steps = 1000,
         norm_type="batchnorm",
         activation="lrelu",
         with_attn: Union[bool, List[bool]] = False,
@@ -295,7 +318,14 @@ class UNet(nn.Module):
         )
         
         self.time_emb_dim = base_channels * 4
-        self.time_emb = TimeEmbedding(self.time_emb_dim)
+        # self.time_emb = TimeEmbedding(self.time_emb_dim)
+        
+        self.pe = PositionalEncoding(n_steps, pe_dim)
+        self.pe_linears = nn.Sequential(
+            nn.Linear(pe_dim, self.time_emb_dim),
+            create_activation(activation),
+            nn.Linear(self.time_emb_dim, self.time_emb_dim)
+        )
         
         # build unet
         # begin with middle block
@@ -322,9 +352,12 @@ class UNet(nn.Module):
         self.unet = now_blocks
     
     def forward(self, x: torch.Tensor, t: torch.Tensor):
-        t_emb = self.time_emb(t)
+        # t_emb = self.time_emb(t)
+        t = self.pe(t)
+        pe = self.pe_linears(t)
+        
         x = self.in_proj(x)
-        return self.out_proj(self.unet(x, t_emb))
+        return self.out_proj(self.unet(x, pe))
 
 
 if __name__ == "__main__":
