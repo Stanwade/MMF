@@ -89,6 +89,7 @@ class DiffusionModel(pl.LightningModule):
         
         
     def sample_forward(self, xt, t, eps=None):
+        self.eval()
         with torch.no_grad():
             alpha_bar = self.alpha_bars[t].reshape(-1, 1, 1, 1)
             if eps is None:

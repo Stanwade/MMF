@@ -31,11 +31,11 @@ if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
         'img_channels': 1,
-        'base_channels': 16,
+        'base_channels': 32,
         'ch_mult': [1,2,4,4],
         'norm_type': 'batchnorm',
         'activation': 'mish',
-        'with_attn': [False, False, True, True],
+        'with_attn': [True, True, False, False],
         'down_up_sample': False
     }
     
@@ -58,12 +58,14 @@ if __name__ == '__main__':
         mode= 'min'
     )
     
+    img_size = 32
+    
     # create model
     model = DiffusionModel(unet_config=unet_config)
     
     # define target transform pipeline, turn a [1,16,16] into [1,64,64]
     target_pipeline = transforms.Compose([
-        transforms.Resize((64, 64), interpolation=transforms.InterpolationMode.NEAREST)
+        transforms.Resize( (img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
     ])
     
     
@@ -75,11 +77,11 @@ if __name__ == '__main__':
                                     train=False,
                                     target_transform=target_pipeline)
     # create loader
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=96)
-    validation_loader = DataLoader(validation_dataset, batch_size=32, shuffle=False, num_workers=96)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=96)
+    validation_loader = DataLoader(validation_dataset, batch_size=64, shuffle=False, num_workers=96)
     
     train_diffusion_model(model,
                           train_loader,
                           validation_loader,
                           num_epochs=200,
-                          callbacks=[model_checkpoint_callback, early_stop_callback])
+                          callbacks=[model_checkpoint_callback])
