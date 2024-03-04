@@ -125,10 +125,17 @@ class MNISTDataset(Dataset):
 
 
 class MMFGrayScaleDataset(Dataset):
-    def __init__(self, root='./datasets', train=True, transform = None) -> None:
+    def __init__(self, root='./datasets',
+                 train=True,
+                 transform=None,
+                 target_transform = None,
+                 train_size=0.7,
+                 valid_size=0.15
+                 ) -> None:
         super().__init__()
         self.train = train
         self.transform = transform
+        self.target_transform = target_transform
         
         self.data_folder = os.path.join(root, 'MMF_grayscale')
         
@@ -136,17 +143,45 @@ class MMFGrayScaleDataset(Dataset):
         self.data = torch.from_numpy(np.load(os.path.join(self.data_folder, 'speckles.npy')))
         self.targets = torch.from_numpy(np.load(os.path.join(self.data_folder, 'pattern.npy')))
         
+        # Split dataset into train, validation, and test sets
+        dataset_size = len(self.data)
+        indices = list(range(dataset_size))
+        split_train = int(np.floor(train_size * dataset_size))
+        split_valid = int(np.floor((train_size + valid_size) * dataset_size))
+
+        if train:
+            self.data = self.data[:split_train]
+            self.targets = self.targets[:split_train]
+        else:
+            valid_data = self.data[split_train:split_valid]
+            valid_targets = self.targets[split_train:split_valid]
+            test_data = self.data[split_valid:]
+            test_targets = self.targets[split_valid:]
+            self.data, self.targets = (valid_data, valid_targets) if len(valid_data) > len(test_data) else (test_data, test_targets)
+
+        
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, idx):
         img = self.data[idx] / 255
-        target = self.targets[idx]
+        target = self.targets[idx].reshape(-1, 16)
         
+        image = image.unsqueeze(0)
+        target = target.unsqueeze(0).float()
+        
+        if self.target_transform:
+            target = self.target_transform(target)
+        
+        if self.transform:
+            img = self.transform(img)
+            
         return img, target
 
 
 if __name__ == '__main__':
+    
+    from torch.utils.data import DataLoader
     
     img_size = 32
     print(torchvision.__version__)
@@ -156,11 +191,16 @@ if __name__ == '__main__':
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
         ])
     
-    dataset = MNISTDataset(root='./datasets', train=True, transform=target_pipeline)
+    dataset = MMFGrayScaleDataset(root='./datasets', train=True, target_transform=target_pipeline)
     
-    print(len(dataset))
-    print(dataset[0][0])
-    print(dataset[0][1].shape)
-    print(dataset[0][1])
-    print(torch.max(dataset[0][1]))
-    print(torch.min(dataset[0][1]))
+    a = dataset.__getitem__(0)
+    print(a[0].shape)
+    print(a[1].shape)
+    
+    dataloader = DataLoader(dataset, batch_size=5, shuffle=False)
+    test_data = dataloader.__iter__().__next__()
+    
+    
+    from utils import plot_imgs
+    plot_imgs(test_data[0], 'test1')
+    plot_imgs(test_data[1], 'test2')
