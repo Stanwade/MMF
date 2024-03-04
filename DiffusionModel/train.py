@@ -31,11 +31,12 @@ if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
         'img_channels': 1,
-        'base_channels': 32,
+        'base_channels': 10,
         'ch_mult': [1,2,4,8,8],
         'norm_type': 'batchnorm',
         'activation': 'mish',
-        'with_attn': [True, True, True, False, False],
+        'pe_dim': 128,
+        'with_attn': [True, True, False, False, False],
         'down_up_sample': False
     }
     
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     
     img_size = 32
     
-    dataset_type = 'MNIST'
+    dataset_type = 'MMF'
     
     # create model
     model = DiffusionModel(unet_config=unet_config)
@@ -78,7 +79,7 @@ if __name__ == '__main__':
         train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=96)
         validation_loader = DataLoader(validation_dataset, batch_size=128, shuffle=False, num_workers=96)
         
-    else:
+    elif dataset_type == 'MMF':
         # Load data
         train_dataset = MMFDataset(root='./datasets/100m_200/16x16/1',
                                 train=True,

@@ -290,7 +290,7 @@ class UNet(nn.Module):
         img_channels:int,
         base_channels:int = 64,
         ch_mult: list = [1,2,4,4],
-        pe_dim = 10,
+        pe_dim = 128,
         n_steps = 1000,
         norm_type="batchnorm",
         activation="lrelu",

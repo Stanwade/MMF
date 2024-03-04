@@ -96,7 +96,7 @@ class DiffusionModel(pl.LightningModule):
                 eps = torch.randn_like(xt)
             else:
                 eps = eps
-            xt = torch.sqrt(1 - alpha_bar) * xt + torch.sqrt(alpha_bar) * eps
+            xt = torch.sqrt(1 - alpha_bar) * eps + torch.sqrt(alpha_bar) * xt
             return xt
     
     def training_step(self, batch, batch_idx):
@@ -161,13 +161,13 @@ class DiffusionModel(pl.LightningModule):
         
         return xt
     
-    def sample_backward(self, img, net, device, simple_var=False):
+    def sample_backward(self, img, net, device, simple_var=False, n_steps=1000):
         self.eval()
         with torch.no_grad():
             xt = img.to(device)
             net = net.to(device)
             print(f'xt shape {xt.shape}')
-            for t in reversed(range(self.n_steps)):
+            for t in reversed(range(int(self.n_steps / 100))):
                 # print(f'ddpm sampling step {t}')
                 xt = self.sample_backward_step(xt, t, net, simple_var)
             
