@@ -25,6 +25,17 @@ def train_reconstruction_model(reconstruction_model,
                 val_dataloaders=validation_loader)
     
 if __name__ == '__main__':
+    
+    model_checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        filename='{epoch}-{val_loss:.4f}',
+        dirpath='DiffusionModel/ckpts3',
+        mode='min',
+        every_n_epochs=10,
+        save_top_k=3,
+        save_last=True
+    )
+    
     train_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=True)
     valid_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=False)
     print(f'Train dataset size: {len(train_dataset)}')
@@ -38,4 +49,7 @@ if __name__ == '__main__':
     reconstruction_model = ReconstructionModel(in_img_shape=train_dataset[0][0].shape,
                                                out_img_shape=train_dataset[0][1].shape)
     
-    train_reconstruction_model(reconstruction_model, train_loader, valid_loader)
+    train_reconstruction_model(reconstruction_model,
+                               train_loader,
+                               valid_loader,
+                               callbacks=[model_checkpoint_callback])

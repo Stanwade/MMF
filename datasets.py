@@ -124,7 +124,26 @@ class MNISTDataset(Dataset):
         return label, pipeline(img)
 
 
-
+class MMFGrayScaleDataset(Dataset):
+    def __init__(self, root='./datasets', train=True, transform = None) -> None:
+        super().__init__()
+        self.train = train
+        self.transform = transform
+        
+        self.data_folder = os.path.join(root, 'MMF_grayscale')
+        
+        # Load the dataset
+        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder, 'speckles.npy')))
+        self.targets = torch.from_numpy(np.load(os.path.join(self.data_folder, 'pattern.npy')))
+        
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        img = self.data[idx] / 255
+        target = self.targets[idx]
+        
+        return img, target
 
 
 if __name__ == '__main__':
@@ -135,8 +154,6 @@ if __name__ == '__main__':
     target_pipeline = transforms.Compose([
         
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
-                                         
-                                         
         ])
     
     dataset = MNISTDataset(root='./datasets', train=True, transform=target_pipeline)
