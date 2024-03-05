@@ -31,7 +31,7 @@ if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
         'img_channels': 1,
-        'base_channels': 32,
+        'base_channels': 10,
         'ch_mult': [1,2,4,8,8],
         'norm_type': 'batchnorm',
         'activation': 'mish',
@@ -59,7 +59,7 @@ if __name__ == '__main__':
         mode= 'min'
     )
     
-    img_size = 32
+    img_size = 48
     
     dataset_type = 'MMFGrayscale'
     
