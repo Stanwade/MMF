@@ -5,9 +5,20 @@ import pytorch_lightning as pl
 from ReconstructionModel.networks import FullyConnectedNetwork
 
 class ReconstructionModel(pl.LightningModule):
-    def __init__(self, in_img_shape: torch.Tensor, out_img_shape: torch.Tensor, **kwargs):
+    def __init__(self, in_img_shape: torch.Tensor,
+                 out_img_shape: torch.Tensor,
+                 mid_lengths: list,
+                 norm_type:str,
+                 activation:str,
+                 **kwargs):
         super().__init__()
-        self.model = FullyConnectedNetwork(in_img_shape, out_img_shape, **kwargs)
+        self.save_hyperparameters()
+        self.model = FullyConnectedNetwork(in_img_shape,
+                                           out_img_shape,
+                                           mid_lengths=mid_lengths,
+                                           norm_type=norm_type,
+                                           activation=activation,
+                                           **kwargs)
 
     def forward(self, x):
         return self.model(x)
@@ -17,6 +28,10 @@ class ReconstructionModel(pl.LightningModule):
         y_hat = self(x)
         loss = F.mse_loss(y_hat, y)
         self.log('train_loss', loss, sync_dist=True)
+        
+        lr = self.trainer.optimizers[0].param_groups[0]['lr']
+        self.log('learning rate', lr, on_step=True, sync_dist=True)
+        
         return loss
     
     def validation_step(self, batch, batch_idx):

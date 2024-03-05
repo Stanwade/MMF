@@ -36,6 +36,7 @@ class FullyConnectedNetwork(nn.Module):
         
         
     def forward(self, x):
+        # print(self.blocks)
         for block in self.blocks:
             x = block(x)
         return x.view(-1, 1, 16, 16)
@@ -43,7 +44,7 @@ class FullyConnectedNetwork(nn.Module):
     
 if __name__ == '__main__':
     test_x = torch.randn(32, 1, 100, 100)
-    model = FullyConnectedNetwork([1,100,100], [1,16,16], mid_lengths=[512, 256, 128])
+    model = FullyConnectedNetwork([1,100,100], [1,16,16], mid_lengths=[512, 256])
     out = model(test_x)
     print(out.size())
         

@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from datasets import MMFDataset, MNISTDataset
+from datasets import MMFDataset, MNISTDataset, MMFGrayScaleDataset
 
 # train.py
 
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
         'img_channels': 1,
-        'base_channels': 10,
+        'base_channels': 32,
         'ch_mult': [1,2,4,8,8],
         'norm_type': 'batchnorm',
         'activation': 'mish',
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='DiffusionModel/ckpts3',
+        dirpath='DiffusionModel/ckpts_grayscale',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     
     img_size = 32
     
-    dataset_type = 'MMF'
+    dataset_type = 'MMFGrayscale'
     
     # create model
     model = DiffusionModel(unet_config=unet_config)
@@ -90,7 +90,20 @@ if __name__ == '__main__':
         # create loader
         train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=96)
         validation_loader = DataLoader(validation_dataset, batch_size=64, shuffle=False, num_workers=96)
-        
+    
+    elif dataset_type =='MMFGrayscale':
+        # Load data
+        train_dataset = MMFGrayScaleDataset(root='./datasets',
+                                            train=True,
+                                            target_transform=target_pipeline)
+        validation_dataset = MMFGrayScaleDataset(root='./datasets',
+                                        train=False,
+                                        target_transform=target_pipeline)
+        # create loader
+        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=96)
+        validation_loader = DataLoader(validation_dataset, batch_size=64, shuffle=False, num_workers=96)
+    
+    
     train_diffusion_model(model,
                           train_loader,
                           validation_loader,

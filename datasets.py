@@ -165,9 +165,9 @@ class MMFGrayScaleDataset(Dataset):
     
     def __getitem__(self, idx):
         img = self.data[idx] / 255
-        target = self.targets[idx].reshape(-1, 16)
+        target = self.targets[idx].reshape(-1, 16).float()
         
-        image = image.unsqueeze(0)
+        img = img.unsqueeze(0).float()
         target = target.unsqueeze(0).float()
         
         if self.target_transform:
@@ -196,6 +196,9 @@ if __name__ == '__main__':
     a = dataset.__getitem__(0)
     print(a[0].shape)
     print(a[1].shape)
+    
+    print(a[0].dtype)
+    print(a[1].dtype)
     
     dataloader = DataLoader(dataset, batch_size=5, shuffle=False)
     test_data = dataloader.__iter__().__next__()

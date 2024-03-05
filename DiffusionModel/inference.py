@@ -21,7 +21,7 @@ unet_config = {
 img_size = 32
 
 print('loading model...')
-model = DiffusionModel.load_from_checkpoint('DiffusionModel/ckpts3/epoch=59-val_loss=0.0293.ckpt')
+model = DiffusionModel.load_from_checkpoint('./DiffusionModel/grayscale/epoch=59-val_loss=0.0895.ckpt')
 
 target_pipeline = transforms.Compose([
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
@@ -30,7 +30,7 @@ target_pipeline = transforms.Compose([
 print('loading datasets...')
 a = torch.randn(5,1,img_size,img_size)
 
-out = model.sample_backward(a, model.unet, 'cuda')
+out = model.sample_backward(a, model.unet, 'cuda', n_steps=1000, skip=False)
 # out_ddim = model.sample_backward_ddim(a, model.unet, 'cuda')
 out = out.to('cpu')
 out = (out + 1) / 2 * 255
