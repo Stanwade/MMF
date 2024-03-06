@@ -31,14 +31,15 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='ReconstructionModel/ckpts',
+        dirpath='ReconstructionModel/ckpts_mnist',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
         save_last=True
     )
     
-    dataset_type = 'MMFGrayscale'
+    dataset_type = 'MMFMNIST'
+    label_size = 32
     
     train_dataset, valid_dataset, train_loader, valid_loader = create_dataloader(dataset_type,need_datasets=True)
     
@@ -46,6 +47,7 @@ if __name__ == '__main__':
                                                out_img_shape=train_dataset[0][1].shape,
                                                mid_lengths=[1024, 512],
                                                norm_type='batchnorm',
+                                               img_size=label_size,
                                                activation='none')
     
     train_reconstruction_model(reconstruction_model,

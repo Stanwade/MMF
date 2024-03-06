@@ -1,5 +1,5 @@
 from ReconstructionModel.model import ReconstructionModel
-from datasets import MMFDataset, MMFGrayScaleDataset
+from datasets import MMFDataset, MMFGrayScaleDataset, MMFMNISTDataset
 
 import torch
 from torch.utils.data import DataLoader
@@ -10,14 +10,14 @@ from torchvision import transforms
 img_size = 16
 
 print('loading model...')
-model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts/epoch=719-val_loss=0.0629.ckpt')
+model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts_mnist/epoch=109-val_loss=0.0176.ckpt')
 
 target_pipeline = transforms.Compose([
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
     ])
 
 print('loading datasets...')
-dataset = MMFGrayScaleDataset(root='datasets', train=False)
+dataset = MMFMNISTDataset(root='datasets', train=False)
 
 test_loader = DataLoader(dataset=dataset,
                          batch_size=5,

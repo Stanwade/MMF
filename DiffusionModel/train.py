@@ -44,7 +44,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='DiffusionModel/ckpts_grayscale',
+        dirpath='DiffusionModel/ckpts_mnist',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -59,9 +59,9 @@ if __name__ == '__main__':
         mode= 'min'
     )
     
-    img_size = 48
+    img_size = 32
     
-    dataset_type = 'MMFGrayscale'
+    dataset_type = 'MMFMNIST'
     
     # create model
     model = DiffusionModel(unet_config=unet_config)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         transforms.Resize( (img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
     ])
     
-    train_loader, validation_loader = create_dataloader(dataset_type, target_pipeline)
+    train_loader, validation_loader = create_dataloader(dataset_type=dataset_type, target_pipeline=target_pipeline)
     
     train_diffusion_model(model,
                           train_loader,

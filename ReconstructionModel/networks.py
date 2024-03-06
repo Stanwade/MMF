@@ -13,7 +13,8 @@ class FullyConnectedNetwork(nn.Module):
                  out_img_shape: torch.Tensor,
                  mid_lengths = [512, 256],
                  norm_type="batchnorm",
-                 activation="mish"):
+                 activation="mish",
+                 img_size = 16):
         super(FullyConnectedNetwork, self).__init__()
         mid_lengths = mid_lengths + [out_img_shape[0] * out_img_shape[1] * out_img_shape[2]]
         self.mid_lengths = mid_lengths
@@ -22,6 +23,7 @@ class FullyConnectedNetwork(nn.Module):
         self.blocks = nn.ModuleList([])
         self.norm = create_norm(norm_type=norm_type, in_img_shape=in_img_shape)
         self.act = create_act(activation=activation)
+        self.img_size = img_size
         
         for i in range(self.layers_num):
             if i == 0:
@@ -39,7 +41,7 @@ class FullyConnectedNetwork(nn.Module):
         # print(self.blocks)
         for block in self.blocks:
             x = block(x)
-        return x.view(-1, 1, 16, 16)
+        return x.view(-1, 1, self.img_size, self.img_size)
     
     
 if __name__ == '__main__':

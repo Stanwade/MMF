@@ -1,5 +1,5 @@
 from ReconstructionModel.model import ReconstructionModel
-from datasets import MMFDataset, MMFGrayScaleDataset
+from datasets import MMFDataset, MMFGrayScaleDataset, MMFMNISTDataset
 from DiffusionModel.diffusion import DiffusionModel
 
 import torch
@@ -8,17 +8,11 @@ from utils import plot_imgs
 from torchvision import transforms
 
 
-img_size = 16
-
 print('loading model...')
-model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts/epoch=149-val_loss=0.0630.ckpt')
-
-target_pipeline = transforms.Compose([
-        transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
-    ])
+model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts_mnist/epoch=49-val_loss=0.0175.ckpt')
 
 print('loading datasets...')
-dataset = MMFGrayScaleDataset(root='datasets', train=False)
+dataset = MMFMNISTDataset(root='datasets', train=False)
 
 test_loader = DataLoader(dataset=dataset,
                          batch_size=5,
@@ -27,7 +21,7 @@ test_loader = DataLoader(dataset=dataset,
 inputs, labels = next(iter(test_loader))
 print(f'inputs size {inputs.shape}')
 
-out = model(inputs.cuda() * 3)
+out = model(inputs.cuda())
 # out_ddim = model.sample_backward_ddim(a, model.unet, 'cuda')
 out = out.to('cpu').detach()
 # out = (out + 1) / 2 * 255
@@ -41,7 +35,7 @@ plot_imgs(out, name='01out1')
 img_size = 48
 
 print('loading model...')
-model = DiffusionModel.load_from_checkpoint('./DiffusionModel/ckpts_grayscale/epoch=59-val_loss=0.0217.ckpt')
+model = DiffusionModel.load_from_checkpoint('./DiffusionModel/ckpts_mnist/epoch=49-val_loss=0.0101.ckpt')
 
 target_pipeline = transforms.Compose([
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
@@ -49,7 +43,7 @@ target_pipeline = transforms.Compose([
 
 print('loading datasets...')
 
-out = target_pipeline(out.float() / 3)
+out = target_pipeline(out.float())
 
 out = model.sample_backward(out, model.unet, 'cuda', skip=True, skip_to=10)
 # out_ddim = model.sample_backward_ddim(a, model.unet, 'cuda')

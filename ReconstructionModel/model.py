@@ -10,6 +10,7 @@ class ReconstructionModel(pl.LightningModule):
                  mid_lengths: list,
                  norm_type:str,
                  activation:str,
+                 img_size:int = 16,
                  **kwargs):
         super().__init__()
         self.save_hyperparameters()
@@ -18,6 +19,7 @@ class ReconstructionModel(pl.LightningModule):
                                            mid_lengths=mid_lengths,
                                            norm_type=norm_type,
                                            activation=activation,
+                                           img_size = img_size,
                                            **kwargs)
 
     def forward(self, x):
