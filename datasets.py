@@ -178,6 +178,22 @@ class MMFGrayScaleDataset(Dataset):
             
         return img, target
 
+class MMFMNISTDataset(Dataset):
+    def __init__(self,
+                 root='./datasets/',
+                 train=True,
+                 transform=None,
+                 target_transform = None,
+                 train_size=0.7,
+                 valid_size=0.15) -> None:
+        super().__init__()
+        self.train = train
+        self.transform = transform
+        self.target_transform = target_transform
+        self.data_folder = os.path.join(root, 'MMF_MNIST')
+        
+        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'pattern.npy')))
+        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'mnist.npy')))
 
 if __name__ == '__main__':
     
