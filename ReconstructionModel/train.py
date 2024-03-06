@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from datasets import MMFDataset, MMFGrayScaleDataset
+from utils import create_dataloader
 
 def train_reconstruction_model(reconstruction_model,
                                train_loader,
@@ -40,26 +40,7 @@ if __name__ == '__main__':
     
     dataset_type = 'MMFGrayscale'
     
-    if dataset_type == 'MMF':
-        train_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=True)
-        valid_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=False)
-        # print(f'Train dataset size: {len(train_dataset)}')
-        # print(f'Valid dataset size: {len(valid_dataset)}')
-        
-        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-        valid_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
-        # print(f'Train loader size: {len(train_loader)}')
-        # print(f'Valid loader size: {len(valid_loader)}')
-    elif dataset_type == 'MMFGrayscale':
-        train_dataset = MMFGrayScaleDataset(root='./datasets/', train=True)
-        valid_dataset = MMFGrayScaleDataset(root='./datasets/', train=False)
-        # print(f'Train dataset size: {len(train_dataset)}')
-        # print(f'Valid dataset size: {len(valid_dataset)}')
-        
-        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-        valid_loader = DataLoader(valid_dataset, batch_size=64, shuffle=False)
-        # print(f'Train loader size: {len(train_loader)}')
-        # print(f'Valid loader size: {len(valid_loader)}')
+    train_dataset, valid_dataset, train_loader, valid_loader = create_dataloader(dataset_type,need_datasets=True)
     
     reconstruction_model = ReconstructionModel(in_img_shape=train_dataset[0][0].shape,
                                                out_img_shape=train_dataset[0][1].shape,

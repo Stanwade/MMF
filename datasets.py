@@ -192,8 +192,41 @@ class MMFMNISTDataset(Dataset):
         self.target_transform = target_transform
         self.data_folder = os.path.join(root, 'MMF_MNIST')
         
-        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'pattern.npy')))
-        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'mnist.npy')))
+        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'mnist.npy')))
+        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'pattern.npy')))
+        
+        dataset_size = len(self.data)
+        indices = list(range(dataset_size))
+        split_train = int(np.floor(train_size * dataset_size))
+        split_valid = int(np.floor((train_size + valid_size) * dataset_size))
+        
+        if train:
+            self.data = self.data[:split_train]
+            self.target = self.target[:split_train]
+        else:
+            valid_data = self.data[split_train:split_valid]
+            valid_targets = self.target[split_train:split_valid]
+            test_data = self.data[split_valid:]
+            test_targets = self.target[split_valid:]
+            self.data, self.target = (valid_data, valid_targets) if len(valid_data) > len(test_data) else (test_data, test_targets)
+            
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        img = self.data[idx]
+        target = self.target[idx].reshape(-1, 32)
+        
+        img = img.unsqueeze(0).float()
+        target = target.unsqueeze(0).float()
+        
+        if self.target_transform:
+            target = self.target_transform(target)
+            
+        if self.transform:
+            img = self.transform(img)
+            
+        return img, target
 
 if __name__ == '__main__':
     
@@ -207,7 +240,7 @@ if __name__ == '__main__':
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
         ])
     
-    dataset = MMFGrayScaleDataset(root='./datasets', train=True, target_transform=target_pipeline)
+    dataset = MMFGrayScaleDataset(root='./datasets', train=True)
     
     a = dataset.__getitem__(0)
     print(a[0].shape)

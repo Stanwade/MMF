@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from datasets import MMFDataset, MNISTDataset, MMFGrayScaleDataset
+from utils import create_dataloader
 
 # train.py
 
@@ -71,38 +71,7 @@ if __name__ == '__main__':
         transforms.Resize( (img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
     ])
     
-    if dataset_type == 'MNIST':
-        train_dataset = MNISTDataset(root='./datasets', train=True, transform=target_pipeline)
-        validation_dataset = MNISTDataset(root='./datasets', train=False, transform=target_pipeline)
-        
-        # create loader
-        train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=96)
-        validation_loader = DataLoader(validation_dataset, batch_size=128, shuffle=False, num_workers=96)
-        
-    elif dataset_type == 'MMF':
-        # Load data
-        train_dataset = MMFDataset(root='./datasets/100m_200/16x16/1',
-                                train=True,
-                                target_transform=target_pipeline)
-        validation_dataset = MMFDataset(root='./datasets/100m_200/16x16/1',
-                                        train=False,
-                                        target_transform=target_pipeline)
-        # create loader
-        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=96)
-        validation_loader = DataLoader(validation_dataset, batch_size=64, shuffle=False, num_workers=96)
-    
-    elif dataset_type =='MMFGrayscale':
-        # Load data
-        train_dataset = MMFGrayScaleDataset(root='./datasets',
-                                            train=True,
-                                            target_transform=target_pipeline)
-        validation_dataset = MMFGrayScaleDataset(root='./datasets',
-                                        train=False,
-                                        target_transform=target_pipeline)
-        # create loader
-        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=96)
-        validation_loader = DataLoader(validation_dataset, batch_size=64, shuffle=False, num_workers=96)
-    
+    train_loader, validation_loader = create_dataloader(dataset_type, target_pipeline)
     
     train_diffusion_model(model,
                           train_loader,
