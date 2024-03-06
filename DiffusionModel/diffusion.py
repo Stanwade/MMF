@@ -161,14 +161,14 @@ class DiffusionModel(pl.LightningModule):
         
         return xt
     
-    def sample_backward(self, img, net, device, simple_var=False, n_steps=1000, skip = True, skip_to = 100):
+    def sample_backward(self, img, net, device, simple_var=False, skip = True, skip_to:int = 100):
         self.eval()
         with torch.no_grad():
             xt = img.to(device)
             net = net.to(device)
             print(f'xt shape {xt.shape}')
             if skip:
-                for t in reversed(range(int(self.n_steps / skip))):
+                for t in reversed(range(skip_to)):
                     # print(f'ddpm sampling step {t}')
                     xt = self.sample_backward_step(xt, t, net, simple_var)
             else:

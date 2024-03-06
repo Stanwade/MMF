@@ -18,10 +18,10 @@ unet_config = {
     'down_up_sample': False
 }
 
-img_size = 32
+img_size = 48
 
 print('loading model...')
-model = DiffusionModel.load_from_checkpoint('./DiffusionModel/grayscale/epoch=59-val_loss=0.0895.ckpt')
+model = DiffusionModel.load_from_checkpoint('./DiffusionModel/ckpts_grayscale/epoch=39-val_loss=0.0231.ckpt')
 
 target_pipeline = transforms.Compose([
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)

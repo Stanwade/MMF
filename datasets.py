@@ -38,7 +38,7 @@ class MMF100m200Dataset(Dataset):
 
 class MMFDataset(Dataset):
     def __init__(self, root, train=True, transform=None, target_transform=None, train_size=0.7, valid_size=0.15):
-        self.root = root
+        self.root = os.path.join(root,'100m_200','16x16','1')
         self.transform = transform
         self.target_transform = target_transform
 
@@ -165,7 +165,7 @@ class MMFGrayScaleDataset(Dataset):
     
     def __getitem__(self, idx):
         img = self.data[idx] / 255
-        target = self.targets[idx].reshape(-1, 16).float()
+        target = self.targets[idx].reshape(-1, 16).float() / 3
         
         img = img.unsqueeze(0).float()
         target = target.unsqueeze(0).float()
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     
     from torch.utils.data import DataLoader
     
-    img_size = 32
+    img_size = 48
     print(torchvision.__version__)
     
     target_pipeline = transforms.Compose([
@@ -199,6 +199,9 @@ if __name__ == '__main__':
     
     print(a[0].dtype)
     print(a[1].dtype)
+    
+    print(f'label max {torch.max(a[1])}')
+    print(f'label min {torch.min(a[1])}')
     
     dataloader = DataLoader(dataset, batch_size=5, shuffle=False)
     test_data = dataloader.__iter__().__next__()

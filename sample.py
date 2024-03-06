@@ -27,7 +27,7 @@ new_state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
 model.load_state_dict(new_state_dict)
 
 # load validation dataset
-valid_dataset = MMFDataset(root='./datasets/100m_200/16x16/1', train=False)
+valid_dataset = MMFDataset(root='./datasets', train=False)
 
 # create data loader
 valid_loader = DataLoader(valid_dataset, batch_size=5, shuffle=False)
@@ -60,7 +60,7 @@ xs_2nd = resize_16_64(outputs1)
 
 
 
-outputs2 = model.sample_backward(xs_2nd, model.unet, 'cuda')
+outputs2 = model.sample_backward(xs_2nd, model.unet, 'cuda', skip_to=10)
 # out_ddim = model.sample_backward_ddim(ys, model.unet, 'cuda')
 outputs2 = outputs2.to('cpu')
 
