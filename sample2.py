@@ -4,7 +4,7 @@ from DiffusionModel.diffusion import DiffusionModel
 
 import torch
 from torch.utils.data import DataLoader
-from utils import plot_imgs
+from utils import plot_imgs, calculate_ssim
 from torchvision import transforms
 
 
@@ -57,7 +57,11 @@ out = out.to('cpu')
 out = (out + 1) / 2 * 255
 out = out.clamp(0,255).to(torch.uint8)
 
+ssims_list = []
+for i in range(out.shape[0]):
+    ssims_list.append(calculate_ssim(out[i], labels[i]))
 
-plot_imgs(out, name='01out2')
+
+plot_imgs(out, name='01out2', str_list=ssims_list)
 # plot_imgs(out_ddim, name='00outddim', figsize=(img_size, img_size))
 
