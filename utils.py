@@ -1,17 +1,19 @@
 import matplotlib.pyplot as plt
 import torch
+from typing import List, Tuple, Union
 from inspect import isfunction
 from torch.utils.data import DataLoader
 from datasets import MNISTDataset, MMFDataset, MMFGrayScaleDataset, MMFMNISTDataset
 
 
-def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16)):
+def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16), str: List[str] = None):
     fig, axes = plt.subplots(nrows=1, ncols=inputs.size(0), figsize=figsize)
     for idx in range(inputs.size(0)):
         axes[idx].imshow(inputs[idx].squeeze().numpy(), cmap='gray')
         axes[idx].set_xticks([])
         axes[idx].set_yticks([])
-        axes[idx].text(0, 0, f'{name}_{idx}')
+        
+        axes[idx].text(0.5, -0.08, f'{name}_{idx}',color='black', ha='center', va = 'bottom', transform=axes[idx].transAxes)
     plt.tight_layout()
     plt.savefig(f'{dir}/{name}.png')
     
