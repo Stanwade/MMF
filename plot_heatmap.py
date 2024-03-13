@@ -12,7 +12,7 @@ x_values = np.linspace(-3, 3, num=400)
 heatmap_data = np.zeros((len(time_points), len(x_values)))
 
 
-betas = np.linspace(0.001, 0.04, num=100)
+betas = np.linspace(0.001, 0.045, num=100)
 alphas = 1 - betas
 
 alpha_bars = np.empty_like(alphas)
@@ -24,7 +24,7 @@ for i in range(len(alphas)):
 
 exp = 1.35
 
-x1 = 1
+x1 = 1.5
 x2 = -x1
 var = 0.2
 
@@ -38,7 +38,7 @@ for i, t in enumerate(time_points):
     print(f'iter {i}; time {t}')
     x1_t = math.sqrt(alpha_bars[t]) * x1
     x2_t = math.sqrt(alpha_bars[t]) * x2
-    var = math.sqrt(1 - alpha_bars[t])
+    var = math.sqrt(1 - alpha_bars[t]) + 0.1
     
     pdf1 = stats.norm.pdf(x_values, x1_t, var)
     pdf2 = stats.norm.pdf(x_values, x2_t, var)
