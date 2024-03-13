@@ -3,6 +3,7 @@ from datasets import MMFDataset, MMFGrayScaleDataset
 from DiffusionModel.diffusion import DiffusionModel
 
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from utils import plot_imgs, calculate_ssim
 from torchvision import transforms
@@ -54,12 +55,20 @@ out = target_pipeline(out.float() / 3)
 out = model.sample_backward(out, model.unet, 'cuda', skip=True, skip_to=10)
 # out_ddim = model.sample_backward_ddim(a, model.unet, 'cuda')
 out = out.to('cpu')
-out = (out + 1) / 2 * 255
+out = out * 255
 out = out.clamp(0,255).to(torch.uint8)
 
 ssims_list = []
+
+labels_resize = F.interpolate(labels.unsqueeze(0), out.shape[1:], mode='nearest').squeeze(0) * 255
+
+print(f'out max = {torch.max(out)}')
+print(f'out min = {torch.min(out)}')
+print(f'label max = {torch.max(labels_resize)}')
+print(f'label min = {torch.min(labels_resize)}')
+
 for i in range(out.shape[0]):
-    ssims_list.append(calculate_ssim(out[i], labels[i]))
+    ssims_list.append(calculate_ssim(out[i].float(), labels_resize[i].float()))
 
 
 plot_imgs(out, name='01out2', str_list=ssims_list)

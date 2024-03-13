@@ -19,7 +19,7 @@ def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16), str_list: List
             
             axes[idx].text(0.5,
                            -0.08,
-                           f'{str_list[idx]}',
+                           f'SSIM={float(str_list[idx]):.4f}',
                            color='black',
                            ha='center',
                            va = 'bottom',
@@ -103,12 +103,12 @@ def calculate_ssim(x, y, k1 = 0.01, k2 = 0.03, L = 255):
     C1 = (k1 * L) ** 2
     C2 = (k2 * L) ** 2
 
-    mu_x = x.mean(dim=[1, 2, 3], keepdim=True)
-    mu_y = y.mean(dim=[1, 2, 3], keepdim=True)
+    mu_x = x.mean(dim=[0, 1, 2], keepdim=True)
+    mu_y = y.mean(dim=[0, 1, 2], keepdim=True)
     mu_x_mu_y = mu_x * mu_y
-    sigma_x_sq = x.var(dim=[1, 2, 3], unbiased=False, keepdim=True)
-    sigma_y_sq = y.var(dim=[1, 2, 3], unbiased=False, keepdim=True)
-    sigma_x_y = torch.mean(x * y, dim=[1, 2, 3], keepdim=True) - mu_x_mu_y
+    sigma_x_sq = x.var(dim=[0, 1, 2], unbiased=False, keepdim=True)
+    sigma_y_sq = y.var(dim=[0, 1, 2], unbiased=False, keepdim=True)
+    sigma_x_y = torch.mean(x * y, dim=[0, 1, 2], keepdim=True) - mu_x_mu_y
     
     mu_x_sq = mu_x.pow(2)
     mu_y_sq = mu_y.pow(2)
