@@ -5,7 +5,8 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from networks import FullyConnectedNetwork, OneLayer
 import matplotlib.pyplot as plt
-from utils import plot_imgs
+from utils import plot_imgs, calculate_ssim
+import torch.nn.functional as F
 
 from DiffusionModel.diffusion import DiffusionModel
 
@@ -64,10 +65,22 @@ outputs2 = model.sample_backward(xs_2nd, model.unet, 'cuda', skip_to=10)
 # out_ddim = model.sample_backward_ddim(ys, model.unet, 'cuda')
 outputs2 = outputs2.to('cpu')
 
-outputs2 = (outputs2 + 1) / 2 * 255
+outputs2 = outputs2 * 255
 out = outputs2.clamp(0,255).to(torch.uint8)
 
-plot_imgs(outputs2,name='outputs_2')
+ssims_list = []
+
+labels_resize = F.interpolate(labels.unsqueeze(0), out.shape[1:], mode='nearest').squeeze(0) * 255
+
+print(f'out max = {torch.max(out)}')
+print(f'out min = {torch.min(out)}')
+print(f'label max = {torch.max(labels_resize)}')
+print(f'label min = {torch.min(labels_resize)}')
+
+for i in range(out.shape[0]):
+    ssims_list.append(calculate_ssim(out[i].float(), labels_resize[i].float()))
+
+plot_imgs(outputs2,name='outputs_2',str_list=ssims_list)
 
 # i = 0
 
