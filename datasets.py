@@ -242,8 +242,8 @@ class MMFMNISTDataset_grayscale(Dataset):
         self.target_transform = target_transform
         self.data_folder = os.path.join(root, 'MNIST_grayscale')
         
-        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'pattern_gray.npy')))
-        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'speckles_1plane.npy')))
+        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'speckles_1plane.npy')))
+        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'pattern_gray.npy')))
         
         dataset_size = len(self.data)
         indices = list(range(dataset_size))
