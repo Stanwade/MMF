@@ -278,6 +278,73 @@ class MMFMNISTDataset_grayscale(Dataset):
             
         return img, target
 
+def create_dataloader(dataset_type: str,
+                      root: str='./datasets/',
+                      target_pipeline = None,
+                      batch_size: int = 64,
+                      num_workers: int = 96,
+                      need_datasets: bool = False):
+    if dataset_type == 'MNIST':
+        train_dataset = MNISTDataset(root=root, train=True, transform=target_pipeline)
+        validation_dataset = MNISTDataset(root=root, train=False, transform=target_pipeline)
+        
+        # create loader
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        
+    elif dataset_type == 'MMF':
+        # Load data
+        train_dataset = MMFDataset(root=root,
+                                train=True,
+                                target_transform=target_pipeline)
+        validation_dataset = MMFDataset(root=root,
+                                        train=False,
+                                        target_transform=target_pipeline)
+        # create loader
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    
+    elif dataset_type =='MMFGrayscale':
+        # Load data
+        train_dataset = MMFGrayScaleDataset(root=root,
+                                            train=True,
+                                            target_transform=target_pipeline)
+        validation_dataset = MMFGrayScaleDataset(root=root,
+                                        train=False,
+                                        target_transform=target_pipeline)
+        # create loader
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    
+    elif dataset_type == 'MMFMNIST':
+        train_dataset = MMFMNISTDataset(root=root,
+                                        train=True,
+                                        target_transform=target_pipeline)
+        validation_dataset = MMFMNISTDataset(root=root,
+                                        train=False,
+                                        target_transform=target_pipeline)
+        # create loader
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    elif dataset_type == 'MMFMNIST_GRAY':
+        train_dataset = MMFMNISTDataset_grayscale(root=root,
+                                        train=True,
+                                        target_transform=target_pipeline)
+        validation_dataset = MMFMNISTDataset_grayscale(root=root,
+                                        train=False,
+                                        target_transform=target_pipeline)
+        # create loader
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        
+    else:
+        raise NotImplementedError(f"dataset type {dataset_type} doesn't exist!")
+    
+    if need_datasets:
+        return train_dataset, validation_dataset, train_loader, validation_loader
+    else:
+        return train_loader, validation_loader
+
 if __name__ == '__main__':
     
     from torch.utils.data import DataLoader
