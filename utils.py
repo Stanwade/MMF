@@ -3,7 +3,7 @@ import torch
 from typing import List, Tuple, Union
 from inspect import isfunction
 from torch.utils.data import DataLoader
-from datasets import MNISTDataset, MMFDataset, MMFGrayScaleDataset, MMFMNISTDataset
+from datasets import MNISTDataset, MMFDataset, MMFGrayScaleDataset, MMFMNISTDataset, MMFMNISTDataset_grayscale
 
 
 def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16), str_list: List[str] = None):
@@ -81,7 +81,8 @@ def create_dataloader(dataset_type: str,
         # create loader
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
         validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-        
+    elif dataset_type == 'MMFMNIST_GRAY':
+        train_dataset = MMFMNISTDataset_grayscale()
     else:
         raise NotImplementedError(f"dataset type {dataset_type} doesn't exist!")
     
