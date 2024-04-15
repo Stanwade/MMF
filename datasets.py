@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 import torch
 import numpy as np
 import os
@@ -278,6 +278,56 @@ class MMFMNISTDataset_grayscale(Dataset):
             
         return img, target
 
+class MMF_FMNISTDataset_grayscale(Dataset):
+    def __init__(self,
+                 root='./datasets/',
+                 train=True,
+                 transform=None,
+                 target_transform = None,
+                 train_size=0.7,
+                 valid_size=0.15) -> None:
+        super().__init__()
+        self.train = train
+        self.transform = transform
+        self.target_transform = target_transform
+        self.data_folder = os.path.join(root, 'FMNIST_grayscale')
+        
+        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'speckles_1plane.npy')))
+        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'pattern_gray.npy')))
+        
+        dataset_size = len(self.data)
+        indices = list(range(dataset_size))
+        split_train = int(np.floor(train_size * dataset_size))
+        split_valid = int(np.floor((train_size + valid_size) * dataset_size))
+        
+        if train:
+            self.data = self.data[:split_train]
+            self.target = self.target[:split_train]
+        else:
+            valid_data = self.data[split_train:split_valid]
+            valid_targets = self.target[split_train:split_valid]
+            test_data = self.data[split_valid:]
+            test_targets = self.target[split_valid:]
+            self.data, self.target = (valid_data, valid_targets) if len(valid_data) > len(test_data) else (test_data, test_targets)
+            
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        img = self.data[idx]
+        target = self.target[idx].reshape(-1, 32)
+        
+        img = img.unsqueeze(0).float()
+        target = target.unsqueeze(0).float()
+        
+        if self.target_transform:
+            target = self.target_transform(target)
+            
+        if self.transform:
+            img = self.transform(img)
+            
+        return img, target
+
 def create_dataloader(dataset_type: str,
                       root: str='./datasets/',
                       target_pipeline = None,
@@ -327,6 +377,17 @@ def create_dataloader(dataset_type: str,
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
         validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     elif dataset_type == 'MMFMNIST_GRAY':
+        train_dataset = MMFMNISTDataset_grayscale(root=root,
+                                        train=True,
+                                        target_transform=target_pipeline)
+        validation_dataset = MMFMNISTDataset_grayscale(root=root,
+                                        train=False,
+                                        target_transform=target_pipeline)
+        # create loader
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    
+    elif dataset_type == 'MMFFMNIST_GRAY':
         train_dataset = MMFMNISTDataset_grayscale(root=root,
                                         train=True,
                                         target_transform=target_pipeline)
