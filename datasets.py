@@ -2,6 +2,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 import numpy as np
 import os
+import torch
 import torchvision
 from torchvision import transforms
 from torchvision.datasets import MNIST
@@ -265,10 +266,10 @@ class MMFMNISTDataset_grayscale(Dataset):
     
     def __getitem__(self, idx):
         img = self.data[idx]
-        target = self.target[idx].reshape(-1, 32)
+        target = self.target[idx]
         
         img = img.unsqueeze(0).float()
-        target = target.unsqueeze(0).float()
+        target = target.unsqueeze(0).float() / 255
         
         if self.target_transform:
             target = self.target_transform(target)
@@ -315,10 +316,10 @@ class MMF_FMNISTDataset_grayscale(Dataset):
     
     def __getitem__(self, idx):
         img = self.data[idx]
-        target = self.target[idx].reshape(-1, 32)
+        target = self.target[idx]
         
         img = img.unsqueeze(0).float()
-        target = target.unsqueeze(0).float()
+        target = target.unsqueeze(0).float() / 255
         
         if self.target_transform:
             target = self.target_transform(target)
@@ -388,10 +389,10 @@ def create_dataloader(dataset_type: str,
         validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     
     elif dataset_type == 'MMFFMNIST_GRAY':
-        train_dataset = MMFMNISTDataset_grayscale(root=root,
+        train_dataset = MMF_FMNISTDataset_grayscale(root=root,
                                         train=True,
                                         target_transform=target_pipeline)
-        validation_dataset = MMFMNISTDataset_grayscale(root=root,
+        validation_dataset = MMF_FMNISTDataset_grayscale(root=root,
                                         train=False,
                                         target_transform=target_pipeline)
         # create loader
@@ -418,7 +419,7 @@ if __name__ == '__main__':
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
         ])
     
-    dataset = MMFGrayScaleDataset(root='./datasets', train=True)
+    dataset = MMFMNISTDataset(root='./datasets', train=True)
     
     a = dataset.__getitem__(0)
     print(a[0].shape)
@@ -426,6 +427,9 @@ if __name__ == '__main__':
     
     print(a[0].dtype)
     print(a[1].dtype)
+    
+    print(f'data max {torch.max(a[0])}')
+    print(f'data min {torch.min(a[0])}')
     
     print(f'label max {torch.max(a[1])}')
     print(f'label min {torch.min(a[1])}')

@@ -15,7 +15,7 @@ from datasets import create_dataloader
 # train.py
 
 def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_epochs=100, callbacks=[]):
-    trainer = Trainer(max_epochs=num_epochs, callbacks=callbacks)
+    trainer = Trainer(max_epochs=num_epochs, callbacks=callbacks, devices='4,5,6,7')
     diffusion_model_trainer = diffusion_model
     trainer.fit(diffusion_model_trainer,
                 train_dataloaders=train_loader,
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='DiffusionModel/ckpts_mnist',
+        dirpath='DiffusionModel/ckpts_fmnist_gray',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     
     img_size = 32
     
-    dataset_type = 'MMFMNIST'
+    dataset_type = 'MMFFMNIST_GRAY'
     
     # create model
     model = DiffusionModel(unet_config=unet_config)

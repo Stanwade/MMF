@@ -18,7 +18,10 @@ def train_reconstruction_model(reconstruction_model,
                                num_epochs=200,
                                callbacks=[]):
     
-    trainer = Trainer(max_epochs=num_epochs, callbacks=callbacks, gradient_clip_val=0.6)
+    trainer = Trainer(max_epochs=num_epochs,
+                      callbacks=callbacks,
+                      gradient_clip_val=0.6,
+                      devices='3,4,5,6')
     reconstruction_model_trainer = reconstruction_model
     trainer.fit(reconstruction_model_trainer,
                 train_dataloaders=train_loader,
@@ -26,29 +29,29 @@ def train_reconstruction_model(reconstruction_model,
     
 if __name__ == '__main__':
     
-    pl.seed_everything(0)
+    pl.seed_everything(42)
     
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='ReconstructionModel/ckpts_mnist',
+        dirpath='ReconstructionModel/ckpts_fmnist_gray_mish',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
         save_last=True
     )
     
-    dataset_type = 'MMFMNIST'
+    dataset_type = 'MMFFMNIST_GRAY'
     label_size = 32
     
     train_dataset, valid_dataset, train_loader, valid_loader = create_dataloader(dataset_type,need_datasets=True)
     
     reconstruction_model = ReconstructionModel(in_img_shape=train_dataset[0][0].shape,
                                                out_img_shape=train_dataset[0][1].shape,
-                                               mid_lengths=[1024, 512],
+                                               mid_lengths=[4096, 2048, 1024],
                                                norm_type='batchnorm',
                                                img_size=label_size,
-                                               activation='none')
+                                               activation='mish')
     
     train_reconstruction_model(reconstruction_model,
                                train_loader,
