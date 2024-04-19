@@ -10,7 +10,7 @@ from torchvision import transforms
 
 
 print('loading model...')
-model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts_fmnist_gray/epoch=19-val_loss=0.0070.ckpt')
+model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts_fmnist_gray_mish/epoch=89-val_loss=0.0030.ckpt')
 
 print('loading datasets...')
 dataset = MMF_FMNISTDataset_grayscale(root='datasets', train=False)
@@ -46,7 +46,7 @@ print('loading datasets...')
 
 out = target_pipeline(out.float())
 
-out = model.sample_backward(out, model.unet, 'cuda:4', skip=True, skip_to=30)
+out = model.sample_backward(out, model.unet, 'cuda:4', skip=True, skip_to=8)
 # out_ddim = model.sample_backward_ddim(a, model.unet, 'cuda')
 out = out.to('cpu')
 out = out  * 255

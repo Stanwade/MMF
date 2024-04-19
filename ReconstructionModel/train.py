@@ -48,10 +48,10 @@ if __name__ == '__main__':
     
     reconstruction_model = ReconstructionModel(in_img_shape=train_dataset[0][0].shape,
                                                out_img_shape=train_dataset[0][1].shape,
-                                               mid_lengths=[4096, 2048, 1024],
+                                               mid_lengths=[],
                                                norm_type='batchnorm',
                                                img_size=label_size,
-                                               activation='mish')
+                                               activation='lrelu')
     
     train_reconstruction_model(reconstruction_model,
                                train_loader,
