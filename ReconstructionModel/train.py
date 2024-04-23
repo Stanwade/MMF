@@ -15,13 +15,13 @@ from datasets import create_dataloader
 def train_reconstruction_model(reconstruction_model,
                                train_loader,
                                validation_loader,
-                               num_epochs=200,
+                               num_epochs=100,
                                callbacks=[]):
     
     trainer = Trainer(max_epochs=num_epochs,
                       callbacks=callbacks,
                       gradient_clip_val=0.6,
-                      devices='3,4,5,6')
+                      devices='0,1,2,3')
     reconstruction_model_trainer = reconstruction_model
     trainer.fit(reconstruction_model_trainer,
                 train_dataloaders=train_loader,
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='ReconstructionModel/ckpts_fmnist_gray_mish',
+        dirpath='ReconstructionModel/ckpts_imglogger_test',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -56,5 +56,5 @@ if __name__ == '__main__':
     train_reconstruction_model(reconstruction_model,
                                train_loader,
                                valid_loader,
-                               num_epochs = 200,
+                               num_epochs = 100,
                                callbacks = [model_checkpoint_callback])
