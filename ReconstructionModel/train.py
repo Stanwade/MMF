@@ -1,6 +1,7 @@
 from ReconstructionModel.model import ReconstructionModel
 
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -12,15 +13,19 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from datasets import create_dataloader
 
+from typing import Optional
+
 def train_reconstruction_model(reconstruction_model,
                                train_loader,
                                validation_loader,
+                               logger,
                                num_epochs=100,
                                callbacks=[]):
     
     trainer = Trainer(max_epochs=num_epochs,
                       callbacks=callbacks,
                       gradient_clip_val=0.6,
+                      logger=logger,
                       devices='0,1,2,3')
     reconstruction_model_trainer = reconstruction_model
     trainer.fit(reconstruction_model_trainer,
@@ -30,6 +35,7 @@ def train_reconstruction_model(reconstruction_model,
 if __name__ == '__main__':
     
     pl.seed_everything(42)
+    logger = TensorBoardLogger(save_dir='./',log_graph=True)
     
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
@@ -56,5 +62,6 @@ if __name__ == '__main__':
     train_reconstruction_model(reconstruction_model,
                                train_loader,
                                valid_loader,
-                               num_epochs = 100,
+                               logger=logger,
+                               num_epochs = 10,
                                callbacks = [model_checkpoint_callback])

@@ -24,6 +24,7 @@ class ReconstructionModel(pl.LightningModule):
                                            activation=activation,
                                            img_size = img_size,
                                            **kwargs)
+        self.input_size = in_img_shape
         # self.logger:TensorBoardLogger = logger
 
     def forward(self, x):
@@ -70,6 +71,11 @@ class ReconstructionModel(pl.LightningModule):
         #            'label' : y,
         #            'loss' : loss}
         return loss
+    
+    def on_train_epoch_end(self) -> None:
+        if self.current_epoch == 0:
+            sampleImg=torch.randn(self.input_size).unsqueeze(0).to('cuda')
+            self.logger.experiment.add_graph(self.model,sampleImg)
     
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters())
