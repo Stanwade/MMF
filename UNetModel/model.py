@@ -3,27 +3,34 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 from torchvision import transforms
+from typing import Union, List
 
-from ReconstructionModel.networks import FullyConnectedNetwork
+from UNetModel.networks import UNet
 from torchvision.utils import make_grid
 
-class ReconstructionModel(pl.LightningModule):
-    def __init__(self, in_img_shape: torch.Tensor,
-                 out_img_shape: torch.Tensor,
-                 mid_lengths: list,
-                 norm_type:str,
-                 activation:str,
-                 img_size:int = 16,
+class UNetModel(pl.LightningModule):
+    def __init__(self, 
+                 logger: TensorBoardLogger,
+                 in_img_shape: torch.Tensor,
+                 base_channels: int,
+                 ch_mult: list,
+                 norm_type: str,
+                 activation: str,
+                 with_attn: Union[bool, List[bool]],
+                 down_up_sample: bool = False,
                  **kwargs):
         super().__init__()
         self.save_hyperparameters()
-        self.model = FullyConnectedNetwork(in_img_shape,
-                                           out_img_shape,
-                                           mid_lengths=mid_lengths,
-                                           norm_type=norm_type,
-                                           activation=activation,
-                                           img_size = img_size,
-                                           **kwargs)
+        self.model = UNet(
+            blocks=2,
+            img_channels=in_img_shape[0],
+            base_channels=base_channels,
+            ch_mult=ch_mult,
+            norm_type=norm_type,
+            activation=activation,
+            with_attn=with_attn,
+            down_up_sample=down_up_sample
+        )
         self.input_size = in_img_shape
         # self.logger:TensorBoardLogger = logger
 

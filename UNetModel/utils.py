@@ -4,20 +4,22 @@ import torch.nn as nn
 from typing import Mapping, Any
 from torchvision.utils import make_grid
 from pytorch_lightning.callbacks import Callback
+from inspect import isfunction
 
+def default(val, d):
+    if val is not None:
+        return val
+    return d() if isfunction(d) else d
 
-def create_norm(norm_type: str, in_img_shape: torch.Tensor):
+def create_norm(in_channels, norm_type="batchnorm"):
     if norm_type == "batchnorm":
-        norm = nn.BatchNorm2d(in_img_shape[0])
+        return nn.BatchNorm2d(in_channels)
     elif norm_type == "instancenorm":
-        norm = nn.InstanceNorm2d(in_img_shape[0])
-    elif norm_type == "layernorm":
-        norm = nn.LayerNorm(in_img_shape)
+        return nn.InstanceNorm2d(in_channels)
     elif norm_type == "none":
-        norm = nn.Identity()
+        return nn.Identity()
     else:
-        raise NotImplementedError('Norm type not implemented')
-    return norm
+        raise NotImplementedError("Norm type not implemented")
 
 def create_act(activation: str):
     if activation == "mish":

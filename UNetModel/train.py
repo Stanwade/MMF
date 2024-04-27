@@ -1,4 +1,4 @@
-from ReconstructionModel.model import ReconstructionModel
+from UNetModel.model import UNetModel
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -15,7 +15,7 @@ from datasets import create_dataloader
 
 from typing import Optional
 
-def train_reconstruction_model(reconstruction_model,
+def train_unet_model(reconstruction_model,
                                train_loader,
                                validation_loader,
                                logger,
@@ -40,26 +40,29 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='ReconstructionModel/ckpts_imglogger_test',
+        dirpath='UnetModel/ckpts_unet_test',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
         save_last=True
     )
     
-    dataset_type = 'MMFFMNIST_GRAY'
+    dataset_type = 'MMFMNIST'
     label_size = 32
     
     train_dataset, valid_dataset, train_loader, valid_loader = create_dataloader(dataset_type,need_datasets=True)
     
-    reconstruction_model = ReconstructionModel(in_img_shape=train_dataset[0][0].shape,
-                                               out_img_shape=train_dataset[0][1].shape,
-                                               mid_lengths=[],
-                                               norm_type='batchnorm',
-                                               img_size=label_size,
-                                               activation='lrelu')
+    reconstruction_model = UNetModel(logger=logger,
+                                     in_img_shape=train_dataset[0][0].shape,
+                                     base_channels=64,
+                                     ch_mult=[1, 2, 4, 4],
+                                     norm_type='batchnorm',
+                                     activation='lrelu',
+                                     with_attn=[False, False, False, True],
+                                     down_up_sample=False)
+                                     
     
-    train_reconstruction_model(reconstruction_model,
+    train_unet_model(reconstruction_model,
                                train_loader,
                                valid_loader,
                                logger=logger,
