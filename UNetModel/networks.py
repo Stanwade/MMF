@@ -267,7 +267,7 @@ class UNet(nn.Module):
                                             norm_type=norm_type,
                                             activation=activation)
         else:
-            now_blocks = ResBlock(base_channels*ch_mult[-1], base_channels*ch_mult[-1], self.time_emb_dim)
+            now_blocks = ResBlock(base_channels*ch_mult[-1], base_channels*ch_mult[-1])
         for inout_ch, mid_ch, attn in reversed(in_out):
             now_blocks = UNetLevel(blocks,
                                    inout_ch,
