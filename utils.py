@@ -6,16 +6,16 @@ from torch.utils.data import DataLoader
 from datasets import MNISTDataset, MMFDataset, MMFGrayScaleDataset, MMFMNISTDataset, MMFMNISTDataset_grayscale
 
 
-def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16), str_list: List[str] = None):
+def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16), str_list: List[str] = None, cmap='gray'):
     fig, axes = plt.subplots(nrows=1, ncols=inputs.size(0), figsize=figsize)
     for idx in range(inputs.size(0)):
-        axes[idx].imshow(inputs[idx].squeeze().numpy(), cmap='gray')
+        axes[idx].imshow(inputs[idx].squeeze().numpy(), cmap=cmap)
         axes[idx].set_xticks([])
         axes[idx].set_yticks([])
         
         if str_list:
             if len(str_list) != inputs.size(0):
-                raise ValueError('plot error: len(str_list) != inputs.size(0)')
+                raise ValueError(f'plot error: len(str_list) != inputs.size(0), len(str_list)={len(str_list)}, inputs.size(0)={inputs.size(0)}')
             
             axes[idx].text(0.5,
                            -0.08,

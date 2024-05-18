@@ -44,7 +44,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='DiffusionModel/ckpts_fmnist_gray',
+        dirpath='DiffusionModel/ckpts_imgnet32',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     
     img_size = 32
     
-    dataset_type = 'MMFFMNIST_GRAY'
+    dataset_type = 'imgnet32'
     
     # create model
     model = DiffusionModel(unet_config=unet_config)
