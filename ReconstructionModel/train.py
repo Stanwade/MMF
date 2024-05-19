@@ -57,11 +57,12 @@ if __name__ == '__main__':
                                                mid_lengths=[],
                                                norm_type='batchnorm',
                                                img_size=label_size,
-                                               activation='lrelu')
+                                               activation='lrelu',
+                                               with_pe = True)
     
     train_reconstruction_model(reconstruction_model,
                                train_loader,
                                valid_loader,
                                logger=logger,
-                               num_epochs = 10,
+                               num_epochs = 100,
                                callbacks = [model_checkpoint_callback])
