@@ -63,7 +63,8 @@ class ReconstructionModel(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = F.mse_loss(y_hat, y)
+        # loss = F.mse_loss(y_hat, y)
+        loss = F.l1_loss(y_hat,y) + F.mse_loss(y_hat,y)
         self.log('val_loss', loss, sync_dist=True)
         
         # outputs = {'input' : x,
