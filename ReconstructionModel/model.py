@@ -14,6 +14,7 @@ class ReconstructionModel(pl.LightningModule):
                  norm_type:str,
                  activation:str,
                  img_size:int = 16,
+                 with_pe = False,
                  **kwargs):
         super().__init__()
         self.save_hyperparameters()
@@ -23,6 +24,7 @@ class ReconstructionModel(pl.LightningModule):
                                            norm_type=norm_type,
                                            activation=activation,
                                            img_size = img_size,
+                                           with_pe=with_pe,
                                            **kwargs)
         self.input_size = in_img_shape
         # self.logger:TensorBoardLogger = logger
@@ -33,7 +35,7 @@ class ReconstructionModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = F.mse_loss(y_hat, y)
+        loss = F.l1_loss(y_hat,y) + F.mse_loss(y_hat,y)
         self.log('train_loss', loss, sync_dist=True)
         
         lr = self.trainer.optimizers[0].param_groups[0]['lr']
