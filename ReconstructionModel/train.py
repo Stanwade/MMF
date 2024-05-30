@@ -26,7 +26,7 @@ def train_reconstruction_model(reconstruction_model,
                       callbacks=callbacks,
                       gradient_clip_val=0.6,
                       logger=logger,
-                      devices='4,5,6,7')
+                      devices='0,1')
     reconstruction_model_trainer = reconstruction_model
     trainer.fit(reconstruction_model_trainer,
                 train_dataloaders=train_loader,
@@ -40,14 +40,14 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='ReconstructionModel/ckpts_imgnet32_real',
+        dirpath='ReconstructionModel/ckpts_leopard2k',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
         save_last=True
     )
     
-    dataset_type = 'imgnet32'
+    dataset_type = 'leopard2k'
     label_size = 32
     
     train_dataset, valid_dataset, train_loader, valid_loader = create_dataloader(dataset_type,need_datasets=True)
@@ -58,7 +58,7 @@ if __name__ == '__main__':
                                                norm_type='batchnorm',
                                                img_size=label_size,
                                                activation='lrelu',
-                                               with_pe = True)
+                                               with_pe = False)
     
     train_reconstruction_model(reconstruction_model,
                                train_loader,
