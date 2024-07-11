@@ -40,7 +40,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='ReconstructionModel/ckpts_leopard2k',
+        dirpath='ReconstructionModel/ckpts_leopard2k_1bit',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,

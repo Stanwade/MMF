@@ -1,6 +1,7 @@
 from ReconstructionModel.model import ReconstructionModel
 from datasets import MMF_imgNet32Dataset
 from DiffusionModel.diffusion import DiffusionModel
+from UNetModel.model import UNetModel
 
 import torch
 import torch.nn.functional as F
@@ -8,9 +9,13 @@ from torch.utils.data import DataLoader
 from utils import plot_imgs, calculate_ssim, restore_images_from_patches
 from torchvision import transforms
 import numpy as np
+from tqdm import trange
 
 print('loading model...')
-model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts_leopard2k/epoch=69-val_loss=0.1191.ckpt')
+model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts_leopard2k/epoch=79-val_loss=0.0630.ckpt')
+# model = UNetModel.load_from_checkpoint('UNetModel/ckpts_leopard2k/epoch=19-val_loss=0.0041.ckpt').cuda(0)
+print(torch.cuda.memory_allocated(0) / 1024)
+
 
 print('loading datasets...')
 inputs = torch.from_numpy(np.load('/home/wty/mmf_-demo/datasets/leopard_2k/speckles_merged.npy')).unsqueeze(1).float()
@@ -20,10 +25,24 @@ labels = torch.from_numpy(np.load('/home/wty/mmf_-demo/datasets/leopard_2k/patte
 print(f'inputs size {inputs.shape}')
 print(f'labels size {labels.shape}')
 
+inputs_list = []
+outputs_list = []
+batch_size = 64
+for i in trange(inputs.shape[0] // batch_size + 1):
+    start_idx = i * batch_size
+    end_idx = min((i + 1) * batch_size, inputs.size(0))
+    batch_inputs = inputs[start_idx:end_idx].cuda(0)
+    # print(f'loop {i}: memory: {torch.cuda.memory_allocated(0) / (1024*1024)} MB')
+    with torch.no_grad():
+        outputs_list.append(model(batch_inputs).to('cpu'))
+out = torch.from_numpy(np.concatenate(outputs_list))
 
+print(f'len of output list {len(outputs_list)}, outputs shape {out.shape}')
 
-out = model(inputs.cuda(0))
+resize = transforms.Resize((32,32),interpolation=transforms.InterpolationMode.NEAREST)
+# out = model(inputs.cuda(0))
 out = torch.clamp(out,0,1)
+out = resize(out)
 print(f'out shape {out.shape}; out max {torch.max(out):.2f}, out min {torch.min(out):.2f}')
 # # out_ddim = model.sample_backward_ddim(a, model.unet, 'cuda')
 out = out.to('cpu').detach()

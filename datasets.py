@@ -445,7 +445,7 @@ class MMF_SingleImageDataset(Dataset):
         self.target_transform = target_transform
         self.data_folder = os.path.join(root, 'leopard_2k')
         
-        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'speckles_merged.npy')).astype(np.float32))
+        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'speckles_merged_fixed.npy')).astype(np.float32))
         self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'pattern_gray.npy')).astype(np.float32))
         
         dataset_size = len(self.data)

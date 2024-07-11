@@ -26,7 +26,7 @@ def train_unet_model(reconstruction_model,
                       callbacks=callbacks,
                       gradient_clip_val=0.6,
                       logger=logger,
-                      devices='0,1,4,5')
+                      devices='0,1')
     reconstruction_model_trainer = reconstruction_model
     trainer.fit(reconstruction_model_trainer,
                 train_dataloaders=train_loader,
@@ -40,14 +40,14 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='UNetModel/ckpts_unet_test',
+        dirpath='UNetModel/ckpts_leopard2k',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
         save_last=True
     )
     
-    dataset_type = 'MMFMNIST'
+    dataset_type = 'leopard2k'
     label_size = 32
     
     target_pipeline = transforms.Compose(
