@@ -5,13 +5,17 @@ from torch.nn import functional as F
 from torchvision import transforms
 from typing import Union, List
 from torchvision.utils import make_grid
-from VGGModel.networks import VGGNet
+from VGGModel.networks import VGGNet, CustomVGG
 
 class VGGModel(pl.LightningModule):
     def __init__(self,in_img_shape,label_size,input_channel):
         super().__init__()
         self.save_hyperparameters()
-        self.model = VGGNet(label_size=label_size,input_channel=input_channel)
+        self.model = CustomVGG(label_size=label_size,
+                               input_channel=input_channel,
+                               input_size=in_img_shape[-1],
+                               channel_list_conv=[64, 128, 256], 
+                               blocks=[2, 2, 3])
         self.input_size = in_img_shape
 
     def forward(self, x):
