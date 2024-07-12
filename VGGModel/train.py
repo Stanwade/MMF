@@ -37,7 +37,7 @@ if __name__ == '__main__':
     pl.seed_everything(42)
     logger = TensorBoardLogger(save_dir='./',log_graph=True)
     
-    dataset_type = 'MMFMNIST'
+    dataset_type = 'MMFFMNIST_GRAY'
     label_size = 32
     
     
@@ -51,9 +51,15 @@ if __name__ == '__main__':
         save_last=True
     )
     
+    # target_pipeline = transforms.Compose([
+    #     transforms.Resize((label_size, label_size), interpolation=transforms.InterpolationMode.NEAREST)
+    #     ])
+    
     train_dataset, valid_dataset, train_loader, valid_loader = create_dataloader(dataset_type,need_datasets=True)
     
-    reconstruction_model = VGGModel()
+    reconstruction_model = VGGModel(in_img_shape=train_dataset[0][0].shape,
+                                    label_size=label_size,
+                                    input_channel=1)
     
     train_VGGModel(reconstruction_model,
                    train_loader,

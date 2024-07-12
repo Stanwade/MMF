@@ -8,10 +8,11 @@ from torchvision.utils import make_grid
 from VGGModel.networks import VGGNet
 
 class VGGModel(pl.LightningModule):
-    def __init__(self):
+    def __init__(self,in_img_shape,label_size,input_channel):
         super().__init__()
         self.save_hyperparameters()
-        self.model = VGGNet()
+        self.model = VGGNet(label_size=label_size,input_channel=input_channel)
+        self.input_size = in_img_shape
 
     def forward(self, x):
         return self.model(x)
@@ -19,7 +20,7 @@ class VGGModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = F.cross_entropy(y_hat, y)
+        loss = F.mse_loss(y_hat, y)
         self.log('train_loss', loss, sync_dist=True)
         lr = self.trainer.optimizers[0].param_groups[0]['lr']
         self.log('learning rate', lr, on_step=True, sync_dist=True)
@@ -53,7 +54,8 @@ class VGGModel(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = F.cross_entropy(y_hat, y)
+        # print(f'wasd: y_hat shape:{y_hat.shape}, y_shape:{y.shape}')
+        loss = F.mse_loss(y_hat, y)
         self.log('val_loss', loss, sync_dist=True)
         return loss
 

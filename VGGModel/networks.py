@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 
 class VGGNet(nn.Module):
-    def __init__(self):
+    def __init__(self,label_size:int=32, input_channel:int = 1):
         super(VGGNet, self).__init__()
         self.conv_layers = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, padding=1),
+            nn.Conv2d(input_channel, 64, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
@@ -44,13 +44,13 @@ class VGGNet(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(),
-            nn.Linear(4096, 32*32)  # Output is a 32x32 vector
+            nn.Linear(4096, label_size*label_size)  # Output is a 32x32 vector
         )
+        self.lable_size = label_size
 
     def forward(self, x):
         x = self.conv_layers(x)
         x = x.view(x.size(0), -1)
         x = self.fc_layers(x)
-        return x
-
+        return x.view(-1, 1, self.lable_size, self.lable_size)
 

@@ -601,7 +601,7 @@ if __name__ == '__main__':
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
         ])
     
-    dataset = MMF_imgNet64Dataset(root='./datasets', train=True)
+    dataset = MMFMNISTDataset(root='./datasets', train=True)
     
     a = dataset.__getitem__(0)
     print(a[0].shape)
