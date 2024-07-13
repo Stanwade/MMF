@@ -26,7 +26,7 @@ def train_VGGModel(VGGModel,
                       callbacks=callbacks,
                       gradient_clip_val=0.6,
                       logger=logger,
-                      devices='0,1')
+                      devices=[1])
     VGGModel_trainer = VGGModel
     trainer.fit(VGGModel_trainer,
                 train_dataloaders=train_loader,

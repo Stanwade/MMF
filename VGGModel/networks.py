@@ -55,13 +55,13 @@ class VGGNet(nn.Module):
         return x.view(-1, 1, self.lable_size, self.lable_size)
 
 def VGGBlock(in_channels, out_channels, num_blocks):
-    layers = []
+    layers = nn.ModuleList([])
     for _ in range(num_blocks):
         layers.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
         layers.append(nn.ReLU(inplace=True))
         in_channels = out_channels
     layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
-    return nn.Sequential(*layers)
+    return layers
 
 class CustomVGG(nn.Module):
     def __init__(self,label_size:int = 32,
@@ -72,7 +72,7 @@ class CustomVGG(nn.Module):
         if len(channel_list_conv) != len(blocks):
             raise ValueError(f"channel_list and blocks must be the same length, got {len(channel_list_conv)} and {len(blocks)}")
         super(CustomVGG, self).__init__()
-        self.conv_layers = nn.ModuleList()
+        self.conv_layers = nn.ModuleList([])
         size = input_size
         for i in range(len(blocks)):
             self.conv_layers.append(VGGBlock(input_channel, channel_list_conv[i], blocks[i]))
@@ -89,3 +89,9 @@ class CustomVGG(nn.Module):
             nn.Linear(4096, label_size*label_size)  # Output is a 32x32 vector
         )
         self.lable_size = label_size
+
+    def forward(self,x):
+        x = self.conv_layers(x)
+        x = x.view(x.size(0),-1)
+        x = self.fc_layers(x)
+        return x.view(-1, 1, self.lable_size, self.lable_size)
