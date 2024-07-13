@@ -54,7 +54,7 @@ class VGGNet(nn.Module):
         x = self.fc_layers(x)
         return x.view(-1, 1, self.lable_size, self.lable_size)
 
-def VGGBlock(in_channels, out_channels, num_blocks):
+def createVGGBlock(in_channels, out_channels, num_blocks):
     layers = nn.ModuleList([])
     for _ in range(num_blocks):
         layers.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
@@ -62,6 +62,16 @@ def VGGBlock(in_channels, out_channels, num_blocks):
         in_channels = out_channels
     layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
     return layers
+
+class VGGBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, num_blocks):
+        super(VGGBlock, self).__init__()
+        self.layers = createVGGBlock(in_channels, out_channels, num_blocks)
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
 class CustomVGG(nn.Module):
     def __init__(self,label_size:int = 32,
