@@ -489,4 +489,5 @@ if __name__ == "__main__":
     unet = UNet(**unet_config)
     test_out = unet(test_x, test_t, test_cond)
     print('unet test_out: ', test_out.shape)
+    print(f'luo yu hong test')
     
