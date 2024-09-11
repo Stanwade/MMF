@@ -5,3 +5,4 @@ lightning_logs/
 datasets/
 __pycache__/
 *.log
+openai/*/*.safetensors

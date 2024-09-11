@@ -3,6 +3,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import math
+from typing import Optional, Union, List
+if __name__ == "__main__":
+    # add sys path
+    import sys
+    sys.path.append('..')
+    from ReconstructionModel.model import ReconstructionModel
+else:
+    from ..ReconstructionModel.model import ReconstructionModel
+
 
 import pytorch_lightning as pl
 
@@ -65,13 +74,24 @@ class DiffusionModel(pl.LightningModule):
     def __init__(self, unet_config: dict,
                  n_steps: int = 1000,
                  min_beta: float = 0.0001,
-                 max_beta: float = 0.02):
+                 max_beta: float = 0.02,
+                 cfg: Optional[float] = None,
+                 cfg_drop: float = 0.25,
+                 reconstruction_model_dir: str = 'ReconstructionModel/ckpts_mnist/epoch=109-val_loss=0.0176.ckpt'):
         super().__init__()
         self.save_hyperparameters()
-        self.unet = UNet(**unet_config, n_steps=n_steps)
+        
+        self.unet = UNet(**unet_config, n_steps=n_steps, with_cond=(cfg is not None))
         self.n_steps = n_steps
         self.min_beta = min_beta
         self.max_beta = max_beta
+        self.cfg = cfg
+        self.cfg_drop = cfg_drop
+        
+        if cfg is not None:
+            # load reconstruction model
+            self.r_model = ReconstructionModel.load_from_checkpoint(reconstruction_model_dir)
+            pass
         
         betas = torch.linspace(min_beta, max_beta, n_steps)
         self.betas = betas
@@ -101,12 +121,24 @@ class DiffusionModel(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         _, x = batch
+        
+        if self.cfg is not None:
+            with torch.no_grad():
+                # init condition mask
+                cond_mask = torch.tensor(torch.rand(size=len(x)) <= self.cfg_drop, device=x.device)
+                
+                # make conditions
+                c = self.r_model(x)
+                
+                # set condition mask, if True, set to 0
+                c[cond_mask] = torch.ones_like(c[0])
+        
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         
         xt = self.sample_forward(x, t, eps)
         
-        eps_theta = self.unet(xt, t)
+        eps_theta = self.unet(xt, t, c if self.cfg is not None else None)
         
         train_loss = F.mse_loss(eps_theta, eps)
         self.log('train_loss', train_loss, sync_dist=True)
@@ -118,12 +150,24 @@ class DiffusionModel(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx):
         _, x = batch
+        
+        if self.cfg is not None:
+            with torch.no_grad():
+                # init condition mask
+                cond_mask = torch.tensor(torch.rand(size=len(x)) <= self.cfg_drop, device=x.device)
+                
+                # make conditions
+                c = self.r_model(x) # TODO: shouldn't use res model here, pass reconstructed directly?
+                
+                # set condition mask, if True, set to 0
+                c[cond_mask] = torch.ones_like(c[0])
+        
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         
         xt = self.sample_forward(x, t, eps)
         
-        eps_theta = self.unet(xt, t)
+        eps_theta = self.unet(xt, t, c if self.cfg is not None else None)
         
         val_loss = F.mse_loss(eps_theta, eps)
         self.log('val_loss', val_loss, sync_dist=True)
@@ -142,10 +186,11 @@ class DiffusionModel(pl.LightningModule):
                     }
                 }
             
-    def sample_backward_step(self, xt, t, net, simple_var=False):
+    @torch.no_grad()
+    def sample_backward_step(self, xt, t, c = None, simple_var=False):
         batch_size = xt.shape[0]
         t_tensor = torch.tensor([t]*batch_size, dtype=torch.long, device=xt.device) # (n, 1)
-        eps = net(xt, t_tensor)
+        eps = self.net(xt, t_tensor, c)
         
         if t == 0:
             noise = torch.zeros_like(eps)
@@ -161,22 +206,51 @@ class DiffusionModel(pl.LightningModule):
         
         return xt
     
-    def sample_backward(self, img, net, device, simple_var=False, skip = True, skip_to:int = 100):
+    @torch.no_grad()
+    def sample_backward(self, img, device, simple_var=False, skip = True, skip_to:int = 100):
         self.eval()
-        with torch.no_grad():
-            xt = img.to(device)
-            net = net.to(device)
-            print(f'xt shape {xt.shape}')
+        xt: torch.Tensor = img.to(device)
+        net = self.unet 
+        net = net.to(device)
+        print(f'xt shape {xt.shape}')
+        if self.cfg is not None:
+            # TODO: write cfg guidance diffusion
+            # duplicate xt
+            xt = torch.concat([xt] * 2, dim=0)
+            
+            # concat empty condition and c
+            c = self.r_model(xt)
+            c_concat = torch.concat([torch.ones_like(c), c], dim=0)
+            
+            # sample
             if skip:
                 for t in reversed(range(skip_to)):
                     # print(f'ddpm sampling step {t}')
-                    xt = self.sample_backward_step(xt, t, net, simple_var)
+                    xt = self.sample_backward_step(xt, t, c_concat, simple_var)
             else:
                 for t in reversed(range(self.n_steps)):
                     # print(f'ddpm sampling step {t}')
-                    xt = self.sample_backward_step(xt, t, net, simple_var)    
+                    xt = self.sample_backward_step(xt, t, c_concat, simple_var)
+            
+            # split xt
+            xt_without_cond, xt_with_cond = torch.chunk(xt, 2, dim=0)
+            
+            # combine them using cfg guidance
+            xt = xt_without_cond + self.cfg * (xt_with_cond - xt_without_cond)
+            
             return xt
-    
+        
+        else:
+            if skip:
+                for t in reversed(range(skip_to)):
+                    # print(f'ddpm sampling step {t}')
+                    xt = self.sample_backward_step(xt, t, simple_var)
+            else:
+                for t in reversed(range(self.n_steps)):
+                    # print(f'ddpm sampling step {t}')
+                    xt = self.sample_backward_step(xt, t, simple_var)    
+            return xt
+    @torch.no_grad()
     def sample_backward_ddim(self, img, net, device, ddim_steps=20, eta=0.0, simple_var=False):
         self.eval()
         with torch.no_grad():
@@ -224,9 +298,10 @@ if __name__ == '__main__':
         'with_attn': True,
         'down_up_sample': True
     }
-    model = DiffusionModel(unet_config)
+    model = DiffusionModel(unet_config, cfg=3.0)
+    print(f'model with cfg? {model.cfg is not None}')
     
-    batch = [torch.randn(32,1,100,100), torch.randn(32, 1, 16, 16)]
-    loss = model.training_step(batch, 0)
+    # batch = [torch.randn(32,1,100,100), torch.randn(32, 1, 16, 16)]
+    # loss = model.training_step(batch, 0)
     
-    print('loss:',loss)
+    # print('loss:',loss)
