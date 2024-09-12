@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import math
+import os
 from torchvision import transforms
 from typing import Optional, Union, List
 from DiffusionModel.utils import default, create_norm, create_activation
@@ -25,8 +26,16 @@ class CondEmbedding(nn.Module):
             a (1,512) embedding tensor
         """
         super(CondEmbedding, self).__init__()
-        self.model:CLIPModel = CLIPModel.from_pretrained(model_dir)
-        self.image_processor:CLIPImageProcessor = CLIPImageProcessor.from_pretrained(model_dir)
+        if not os.path.exists(os.path.join(model_dir,"model.safetensors")):
+            self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+            # save to model_dir
+            for param in self.model.parameters():
+                # set param into contigious, so that it can be saved
+                param = param.contiguous()
+            self.model.save_pretrained(model_dir)
+        else:
+            self.model:CLIPModel = CLIPModel.from_pretrained(model_dir)
+            self.image_processor:CLIPImageProcessor = CLIPImageProcessor.from_pretrained(model_dir)
         
         
     def forward(self, x) -> torch.Tensor:
