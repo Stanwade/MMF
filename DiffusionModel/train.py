@@ -24,7 +24,7 @@ def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_
 
 if __name__ == '__main__':
     # set config
-    pl.seed_everything(0)
+    pl.seed_everything(42)
     torch.cuda.empty_cache()
     
     # set unet configs
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     dataset_type = 'leopard2k'
     
     # create model
-    model = DiffusionModel(unet_config=unet_config)
+    model = DiffusionModel(unet_config=unet_config, cfg=3.0)
     
     # define target transform pipeline, turn a [1,16,16] into [1,64,64]
     target_pipeline = transforms.Compose([

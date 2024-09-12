@@ -90,7 +90,7 @@ class DiffusionModel(pl.LightningModule):
         
         if cfg is not None:
             # load reconstruction model
-            self.r_model = ReconstructionModel.load_from_checkpoint(reconstruction_model_dir)
+            self.r_model = ReconstructionModel.load_from_checkpoint(reconstruction_model_dir, requires_grad=False)
             pass
         
         betas = torch.linspace(min_beta, max_beta, n_steps)
