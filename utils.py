@@ -6,8 +6,10 @@ from torch.utils.data import DataLoader
 from datasets import MNISTDataset, MMFDataset, MMFGrayScaleDataset, MMFMNISTDataset, MMFMNISTDataset_grayscale
 import numpy as np
 import os
+import warnings
 from tqdm import trange
 
+warnings.filterwarnings("ignore")
 def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16), str_list: List[str] = None, cmap='gray'):
     col = min(inputs.size(0),5)
     fig, axes = plt.subplots(nrows=1, ncols=col, figsize=figsize)
