@@ -27,20 +27,27 @@ class CondEmbedding(nn.Module):
         """
         super(CondEmbedding, self).__init__()
         if not os.path.exists(os.path.join(model_dir,"model.safetensors")):
-            self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+            self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32",cache_dir='./hfcache',force_download=True)
             # save to model_dir
             for param in self.model.parameters():
                 # set param into contigious, so that it can be saved
-                param = param.contiguous()
+                param.data = param.data.contiguous()
             self.model.save_pretrained(model_dir)
+            self.image_processor:CLIPImageProcessor = CLIPImageProcessor.from_pretrained(model_dir,do_rescale=False,
+                                                                                         do_convert_rgb=True,
+                                                                                         input_data_format='channels_first')
         else:
             self.model:CLIPModel = CLIPModel.from_pretrained(model_dir)
-            self.image_processor:CLIPImageProcessor = CLIPImageProcessor.from_pretrained(model_dir)
+            self.image_processor:CLIPImageProcessor = CLIPImageProcessor.from_pretrained(model_dir,
+                                                                                         do_rescale=False,
+                                                                                         do_convert_rgb=True,
+                                                                                         input_data_format='channels_first')
         
         
     def forward(self, x) -> torch.Tensor:
         with torch.no_grad():
-            inputs = self.image_processor(images=x, return_tensors="pt")
+            # print(f'cond embedding: input shape {x.shape} input max {torch.max(x)} input min {torch.min(x)}')
+            inputs = self.image_processor(images=x, return_tensors="pt").to(x.device)
             return self.model.get_image_features(**inputs)
 
 
@@ -383,6 +390,7 @@ class UNet(nn.Module):
         # self.time_emb = TimeEmbedding(self.time_emb_dim)
         
         self.pe = PositionalEncoding(n_steps, pe_dim)
+        self.pe.requires_grad_(False)
         self.pe_linears = nn.Sequential(
             nn.Linear(pe_dim, self.time_emb_dim),
             create_activation(activation),
@@ -391,7 +399,8 @@ class UNet(nn.Module):
         
         self.with_cond = with_cond
         if with_cond:
-            self.ce = CondEmbedding(model_dir="../openai/clip-vit-base-patch32")
+            self.ce:CondEmbedding = CondEmbedding(model_dir="./openai/clip-vit-base-patch32")
+            self.ce.requires_grad_(False)
             self.ce_linears = nn.Sequential(
                 nn.Linear(512, self.time_emb_dim),
                 create_activation(activation),
@@ -433,14 +442,15 @@ class UNet(nn.Module):
         t_emb_proj = self.pe_linears(t)
         
         if self.with_cond and c is not None:
+            # print(f'Unet: ce input max: {torch.max(c)}')
             c = self.ce(c)
             c_emb_proj = self.ce_linears(c)
-            print('projected c shape: ', c_emb_proj.shape)
+            # print('projected c shape: ', c_emb_proj.shape)
         else:
             c_emb_proj = None
         
         x = self.in_proj(x)
-        print('projected x shape: ', x.shape)
+        # print('projected x shape: ', x.shape)
         return self.out_proj(self.unet(x, t_emb_proj, c_emb_proj))
 
 
