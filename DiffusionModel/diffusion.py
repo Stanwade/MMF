@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torchvision import transforms
 import math
 from typing import Optional, Union, List
 if __name__ == "__main__":
@@ -10,7 +11,7 @@ if __name__ == "__main__":
     sys.path.append('..')
     from ReconstructionModel.model import ReconstructionModel
 else:
-    from ..ReconstructionModel.model import ReconstructionModel
+    from ReconstructionModel.model import ReconstructionModel
 
 
 import pytorch_lightning as pl
@@ -80,7 +81,7 @@ class DiffusionModel(pl.LightningModule):
                  reconstruction_model_dir: str = 'ReconstructionModel/ckpts_mnist/epoch=109-val_loss=0.0176.ckpt'):
         super().__init__()
         self.save_hyperparameters()
-        
+        self.example_input_array = torch.Tensor(64,1,64,64)
         self.unet = UNet(**unet_config, n_steps=n_steps, with_cond=(cfg is not None))
         self.n_steps = n_steps
         self.min_beta = min_beta
@@ -90,8 +91,12 @@ class DiffusionModel(pl.LightningModule):
         
         if cfg is not None:
             # load reconstruction model
-            self.r_model = ReconstructionModel.load_from_checkpoint(reconstruction_model_dir, requires_grad=False)
-            pass
+            self.r_model = ReconstructionModel.load_from_checkpoint(reconstruction_model_dir,map_location=self.device)
+
+            # print(self.r_model)
+            self.r_model.freeze()
+            self.r_model.requires_grad_(False)
+            # print(f'self recons model loaded, type: {type(self.r_model)}')
         
         betas = torch.linspace(min_beta, max_beta, n_steps)
         self.betas = betas
@@ -106,8 +111,15 @@ class DiffusionModel(pl.LightningModule):
             alpha_bars[i] = product
         
         self.register_buffer('alpha_bars',alpha_bars)
-        
-        
+    
+    @torch.no_grad()
+    def forward(self, x):
+        # wrote this only for debugging
+        # print(f'in forward')
+        t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
+        c = torch.randint(0,255,(x.size(0),3,64,64),device=self.device)
+        return self.unet(x, t, c)
+    
     def sample_forward(self, xt, t, eps=None):
         self.eval()
         with torch.no_grad():
@@ -120,18 +132,29 @@ class DiffusionModel(pl.LightningModule):
             return xt
     
     def training_step(self, batch, batch_idx):
+        
+        # exit('debug finished')
         _, x = batch
         
         if self.cfg is not None:
             with torch.no_grad():
                 # init condition mask
-                cond_mask = torch.tensor(torch.rand(size=len(x)) <= self.cfg_drop, device=x.device)
+                y = batch[0]
+                cond_mask = torch.tensor(torch.rand(size=(len(x),)) <= self.cfg_drop, device=x.device)
                 
                 # make conditions
-                c = self.r_model(x)
+                c = self.r_model(y)
                 
                 # set condition mask, if True, set to 0
                 c[cond_mask] = torch.ones_like(c[0])
+                
+                # repeat this 3 times in channel for CLIP embedding
+                c = c.repeat(1,3,1,1)
+                
+                transform = transforms.Resize(size=(x.shape[2],x.shape[3]),
+                                              interpolation=transforms.InterpolationMode.BICUBIC)
+                c = transform(c)
+                c = torch.clamp(c, 0, 1)
         
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
@@ -150,17 +173,31 @@ class DiffusionModel(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx):
         _, x = batch
-        
+        # print(f'in valid x shape {x.shape}')
         if self.cfg is not None:
             with torch.no_grad():
+                y = batch[0]
                 # init condition mask
-                cond_mask = torch.tensor(torch.rand(size=len(x)) <= self.cfg_drop, device=x.device)
+                cond_mask = torch.tensor(torch.rand(size=(len(x),)) <= self.cfg_drop, device=x.device)
                 
                 # make conditions
-                c = self.r_model(x) # TODO: shouldn't use res model here, pass reconstructed directly?
+                # print(f'y shape {y.shape}, y max: {torch.max(y)}, y min: {torch.min(y)}')
+                c = self.r_model(y)
+                
+                # print(f'in valid step')
+                # print(f'Diff: c max {torch.max(c)} c min {torch.min(c)}')
                 
                 # set condition mask, if True, set to 0
                 c[cond_mask] = torch.ones_like(c[0])
+                # repeat this 3 times in channel for CLIP embedding
+                c = c.repeat(1,3,1,1)
+                
+                transform = transforms.Resize(size=(x.shape[2],x.shape[3]),
+                                              interpolation=transforms.InterpolationMode.BICUBIC)
+                c = transform(c)
+                c = torch.clamp(c, 0, 1)
+                # print(f'c shape {c.shape}')
+                
         
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
@@ -185,7 +222,7 @@ class DiffusionModel(pl.LightningModule):
                     'monitor': 'val_loss'
                     }
                 }
-            
+    
     @torch.no_grad()
     def sample_backward_step(self, xt, t, c = None, simple_var=False):
         batch_size = xt.shape[0]
