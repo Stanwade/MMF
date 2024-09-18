@@ -6,6 +6,7 @@ import torch
 import torchvision
 from torchvision import transforms
 from torchvision.datasets import MNIST
+from typing import Literal
 
 class MMF100m200Dataset(Dataset):
     
@@ -482,12 +483,29 @@ class MMF_SingleImageDataset(Dataset):
             
         return img, target
 
-def create_dataloader(dataset_type: str,
+def create_dataloader(dataset_type: Literal['MNIST', 
+                                            'MMF', 
+                                            'MMFGrayscale', 
+                                            'MMFMNIST', 
+                                            'MMFMNIST_GRAY', 
+                                            'MMFFMNIST_GRAY', 
+                                            'imgnet32', 
+                                            'imgnet64', 
+                                            'leopard2k'],
                       root: str='./datasets/',
                       target_pipeline = None,
                       batch_size: int = 64,
                       num_workers: int = 96,
                       need_datasets: bool = False):
+    assert dataset_type in ('MNIST', 
+                            'MMF', 
+                            'MMFGrayscale', 
+                            'MMFMNIST', 
+                            'MMFMNIST_GRAY', 
+                            'MMFFMNIST_GRAY', 
+                            'imgnet32', 
+                            'imgnet64', 
+                            'leopard2k'), f'dataset_type invalid, got {dataset_type}'
     if dataset_type == 'MNIST':
         train_dataset = MNISTDataset(root=root, train=True, transform=target_pipeline)
         validation_dataset = MNISTDataset(root=root, train=False, transform=target_pipeline)

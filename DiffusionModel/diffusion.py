@@ -244,7 +244,7 @@ class DiffusionModel(pl.LightningModule):
         return xt
     
     @torch.no_grad()
-    def sample_backward(self, img, device, simple_var=False, skip = True, skip_to:int = 100):
+    def sample_backward(self, img, device, simple_var=False, skip_to:Optional[int] = 100):
         self.eval()
         xt: torch.Tensor = img.to(device)
         net = self.unet 
@@ -260,7 +260,7 @@ class DiffusionModel(pl.LightningModule):
             c_concat = torch.concat([torch.ones_like(c), c], dim=0)
             
             # sample
-            if skip:
+            if skip_to is not None:
                 for t in reversed(range(skip_to)):
                     # print(f'ddpm sampling step {t}')
                     xt = self.sample_backward_step(xt, t, c_concat, simple_var)
@@ -278,7 +278,7 @@ class DiffusionModel(pl.LightningModule):
             return xt
         
         else:
-            if skip:
+            if skip_to is not None:
                 for t in reversed(range(skip_to)):
                     # print(f'ddpm sampling step {t}')
                     xt = self.sample_backward_step(xt, t, simple_var)
