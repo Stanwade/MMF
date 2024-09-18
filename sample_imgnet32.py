@@ -10,7 +10,7 @@ from torchvision import transforms
 import numpy as np
 
 print('loading model...')
-model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts_imgnet32_real/epoch=99-val_loss=0.0078-v1.ckpt')
+model = ReconstructionModel.load_from_checkpoint('ReconstructionModel/ckpts_imgnet32_real/epoch=99-val_loss=0.0078-v1.ckpt',map_location='cuda')
 
 print('loading datasets...')
 dataset = MMF_imgNet32Dataset(root='datasets', train=False)
@@ -23,10 +23,10 @@ inputs, labels = next(iter(test_loader))
 print(f'inputs size {inputs.shape}')
 
 
-
-out = model(inputs.cuda(4))
+out = model(inputs.cuda())
 # out_ddim = model.sample_backward_ddim(a, model.unet, 'cuda')
 out = out.to('cpu').detach()
+print(f'out size {out.shape}')
 # out = (out + 1) / 2 * 255
 # out = out.clamp(0,255).to(torch.uint8)
 
@@ -56,7 +56,7 @@ plot_imgs(outs_rgb, name='01out1',cmap=None)
 img_size = 32
 
 print('loading model...')
-model = DiffusionModel.load_from_checkpoint('./DiffusionModel/ckpts_imgnet32/epoch=59-val_loss=0.0266.ckpt')
+model = DiffusionModel.load_from_checkpoint('./DiffusionModel/ckpts_imgnet32/epoch=69-val_loss=0.0228.ckpt', map_location="cuda")
 
 target_pipeline = transforms.Compose([
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
@@ -66,7 +66,7 @@ print('loading datasets...')
 
 out = target_pipeline(out.float())
 
-out = model.sample_backward(out, model.unet, 'cuda:4', skip=True, skip_to=8)
+out = model.sample_backward(out, 'cuda', skip=True, skip_to=8)
 # out_ddim = model.sample_backward_ddim(a, model.unet, 'cuda')
 out = out.to('cpu')
 out = out  * 255
@@ -101,7 +101,7 @@ plot_imgs(outs2_rgb, name='01out2',str_list=ssims_list)
 noise = torch.randn((5,1,32,32))
 plot_imgs(noise, name='01noise')
 
-out = model.sample_backward(noise, model.unet, 'cuda:4', skip=False).to('cpu')
+out = model.sample_backward(noise, 'cuda', skip=False).to('cpu')
 
 plot_imgs(out, name='01out3')
 
