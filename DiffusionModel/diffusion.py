@@ -227,7 +227,7 @@ class DiffusionModel(pl.LightningModule):
     def sample_backward_step(self, xt, t, c = None, simple_var=False):
         batch_size = xt.shape[0]
         t_tensor = torch.tensor([t]*batch_size, dtype=torch.long, device=xt.device) # (n, 1)
-        eps = self.net(xt, t_tensor, c)
+        eps = self.unet(xt, t_tensor, c)
         
         if t == 0:
             noise = torch.zeros_like(eps)
