@@ -7,6 +7,7 @@ import torch.utils.data as data
 import numpy as np
 from typing import Optional
 from utils import plot_imgs, calculate_ssim
+from tqdm import trange
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -24,7 +25,7 @@ def sample_cfg(diffusion_model_dir:str,
                reconstruction_model_dir:str = None,
                img_dir:str = 'img',
                **kwargs):
-    
+    print('loading diffusion models...')
     if reconstruction_model_dir is not None:
         model = DiffusionModel.load_from_checkpoint(diffusion_model_dir, 
                                                     cfg=cfg_weight,
@@ -36,8 +37,13 @@ def sample_cfg(diffusion_model_dir:str,
                                                     map_location='cuda')
     model.eval()
     
-    r_model = ReconstructionModel.load_from_checkpoint(reconstruction_model_dir)
+    print('loading reconstruction models...')
+    if cfg_weight is not None:
+        r_model = model.r_model
+    else:
+        r_model = ReconstructionModel.load_from_checkpoint(reconstruction_model_dir)
     
+    print(f'creating dataloader...')
     _, valid_dataset, _, _ = create_dataloader(dataset_type=dataset_type, need_datasets=True)
     
     valid_loader = data.DataLoader(valid_dataset, 
@@ -50,12 +56,16 @@ def sample_cfg(diffusion_model_dir:str,
     
     inputs, labels = next(iter(valid_loader))
     
+    inputs = inputs.to('cuda')
+    labels = labels.to('cuda')
+    print(f'inputs shape: {inputs.shape}')
+    print(f'labels.shape {labels.shape}')
     outputs_recon = r_model(inputs)
     
-    outputs_diffusion = model.sample_backward(inputs, skip_to=skip_to)
+    outputs_diffusion = model.sample_backward(outputs_recon, device='cuda', skip_to=skip_to)
     
-    
-    for i in range(batch_size):
+    print(f'running test...')
+    for i in trange(batch_size):
         # input i shape (1,height,width)
         inputs_rgb.append(torch.unsqueeze(torch.cat([inputs[img_channels*i],
                                                          inputs[img_channels*i+1],
@@ -82,31 +92,39 @@ def sample_cfg(diffusion_model_dir:str,
     
         if i == batch_size - 1:
             # (batch_size, channels, height, width) -> (batch_size, height, width, channels)
-            inputs_rgb = torch.cat(inputs_rgb, axis=0).permute(0, 2, 3, 1)
-            labels_rgb = torch.cat(labels_rgb, axis=0).permute(0, 2, 3, 1)
-            outs_recon_rgb = torch.cat(outs_recon_rgb, axis=0).permute(0, 2, 3, 1)
-            outs_diffusion_rgb = torch.cat(outs_diffusion_rgb, axis=0).permute(0, 2, 3, 1)
+            inputs_rgb = torch.cat(inputs_rgb, axis=0).permute(0, 2, 3, 1).to('cpu')
+            labels_rgb = torch.cat(labels_rgb, axis=0).permute(0, 2, 3, 1).to('cpu')
+            outs_recon_rgb = torch.cat(outs_recon_rgb, axis=0).permute(0, 2, 3, 1).to('cpu')
+            outs_diffusion_rgb = torch.cat(outs_diffusion_rgb, axis=0).permute(0, 2, 3, 1).to('cpu')
 
     ssim_list = []
 
-    for i in range(batch_size):
+    print('calculating ssim...')
+    for i in trange(batch_size):
         ssim = calculate_ssim(outs_diffusion_rgb[i], labels_rgb[i])
         ssim_list.append(ssim)
     
+    print(f'plotting imgs...')
     plot_imgs(inputs_rgb, name='01_inputs',cmap=None, dir=img_dir)
     plot_imgs(labels_rgb, name='02_label',cmap=None, dir=img_dir)
     plot_imgs(outs_recon_rgb, name='03_out_recon',cmap=None, dir=img_dir)
     plot_imgs(outs_diffusion_rgb, name='04_out_diffusion',cmap=None, dir=img_dir, str_list=ssim_list)
     
+    noise = torch.randn((batch_size,1,labels.shape[-2],labels.shape[-1])).to('cuda')
+    print(f'noise shape {noise.shape}')
+    outs_noise = model.sample_backward(img=noise, device='cuda',skip_to=None).to('cpu')
+    print(f'outs_noise.shape {outs_noise.shape}')
+    plot_imgs(outs_noise,name='05_out_noise',cmap='gray')
+    
     
     return outs_diffusion_rgb
 
 if __name__ == '__main__':
-    sample_cfg(diffusion_model_dir='./DiffusionModel/ckpts_imgnet32/epoch=59-val_loss=0.0266.ckpt',
+    sample_cfg(diffusion_model_dir='./DiffusionModel/ckpts_imgnet32_cfg_wo_Down_Up/epoch=79-val_loss=0.0261.ckpt',
                batch_size=5,
                dataset_type='imgnet32',
                img_channels=3,
-               cfg_weight=3.0,
-               skip_to=100,
+               cfg_weight=1.0,
+               skip_to=8,
                reconstruction_model_dir=None,
-               img_dir='img')
+               img_dir='imgs')

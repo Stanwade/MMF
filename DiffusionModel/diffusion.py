@@ -244,29 +244,32 @@ class DiffusionModel(pl.LightningModule):
         return xt
     
     @torch.no_grad()
-    def sample_backward(self, img, device, simple_var=False, skip_to:Optional[int] = 100):
+    def sample_backward(self, img, device, simple_var=False, skip_to:Optional[int] = 100, cfg_act:bool = True):
         self.eval()
         xt: torch.Tensor = img.to(device)
         net = self.unet 
         net = net.to(device)
-        print(f'xt shape {xt.shape}')
-        if self.cfg is not None:
+        # print(f'xt shape {xt.shape}')
+        if self.cfg is not None and cfg_act:
             # TODO: write cfg guidance diffusion
+            # c = self.r_model(xt)
+            c = xt
+            
             # duplicate xt
             xt = torch.concat([xt] * 2, dim=0)
             
             # concat empty condition and c
-            c = self.r_model(xt)
-            c_concat = torch.concat([torch.ones_like(c), c], dim=0)
+            c_concat = torch.concat([torch.ones_like(c), c], dim=0).repeat(1,3,1,1).clamp(0, 1)
+            
             
             # sample
             if skip_to is not None:
                 for t in reversed(range(skip_to)):
-                    # print(f'ddpm sampling step {t}')
+                    print(f'ddpm sampling step {t}', end='\r')
                     xt = self.sample_backward_step(xt, t, c_concat, simple_var)
             else:
                 for t in reversed(range(self.n_steps)):
-                    # print(f'ddpm sampling step {t}')
+                    print(f'ddpm sampling step {t}', end='\r')
                     xt = self.sample_backward_step(xt, t, c_concat, simple_var)
             
             # split xt

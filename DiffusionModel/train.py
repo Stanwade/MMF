@@ -36,15 +36,15 @@ if __name__ == '__main__':
         'norm_type': 'batchnorm',
         'activation': 'relu',
         'pe_dim': 128,
-        'with_attn': [False, False, False, True, True],
-        'down_up_sample': True
+        'with_attn': [False, False, False, False, True],
+        'down_up_sample': False
     }
     
     # set modelcheckpoint config
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='DiffusionModel/ckpts_imgnet32_cfg',
+        dirpath='DiffusionModel/ckpts_imgnet32_cfg_wo_Down_Up',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -59,12 +59,14 @@ if __name__ == '__main__':
         mode= 'min'
     )
     
-    img_size = 64
+    img_size = 32
     
     dataset_type = 'imgnet32'
     
     # create model
-    model = DiffusionModel(unet_config=unet_config, cfg=3.0, reconstruction_model_dir='./ReconstructionModel/ckpts_imgnet32_real/epoch=99-val_loss=0.0078-v1.ckpt')
+    model = DiffusionModel(unet_config=unet_config, 
+                           cfg=3.0, 
+                           reconstruction_model_dir='./ReconstructionModel/ckpts_imgnet32_real/epoch=99-val_loss=0.0078-v1.ckpt')
     
     # define target transform pipeline, turn a [1,16,16] into [1,64,64]
     target_pipeline = transforms.Compose([

@@ -66,7 +66,7 @@ print('loading datasets...')
 
 out = target_pipeline(out.float())
 
-out = model.sample_backward(out, 'cuda', skip=True, skip_to=8)
+out = model.sample_backward(out, 'cuda', skip_to=8)
 # out_ddim = model.sample_backward_ddim(a, model.unet, 'cuda')
 out = out.to('cpu')
 out = out  * 255
@@ -101,7 +101,7 @@ plot_imgs(outs2_rgb, name='01out2',str_list=ssims_list)
 noise = torch.randn((5,1,32,32))
 plot_imgs(noise, name='01noise')
 
-out = model.sample_backward(noise, 'cuda', skip=False).to('cpu')
+out = model.sample_backward(noise, 'cuda', skip_to=None).to('cpu')
 
 plot_imgs(out, name='01out3')
 

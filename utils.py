@@ -11,6 +11,9 @@ from tqdm import trange
 
 warnings.filterwarnings("ignore")
 def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16), str_list: List[str] = None, cmap='gray'):
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+    
     col = min(inputs.size(0),5)
     fig, axes = plt.subplots(nrows=1, ncols=col, figsize=figsize)
     for idx in range(col):
