@@ -432,6 +432,57 @@ class MMF_imgNet64Dataset(Dataset):
             
         return img, target
 
+class MMF_imgNet16Dataset(Dataset):
+    def __init__(self,
+                 root='./datasets/',
+                 train=True,
+                 transform=None,
+                 target_transform = None,
+                 train_size=0.7,
+                 valid_size=0.15) -> None:
+        super().__init__()
+        self.train = train
+        self.transform = transform
+        self.target_transform = target_transform
+        self.data_folder = os.path.join(root, 'imgnet16')
+        
+        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'speckles_merged.npy')).astype(np.float32))
+        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'pattern_gray.npy')).astype(np.float32))
+        
+        dataset_size = len(self.data)
+        indices = list(range(dataset_size))
+        split_train = int(np.floor(train_size * dataset_size))
+        split_valid = int(np.floor((train_size + valid_size) * dataset_size))
+        
+        if train:
+            self.data = self.data[:split_train]
+            self.target = self.target[:split_train]
+        else:
+            valid_data = self.data[split_train:split_valid]
+            valid_targets = self.target[split_train:split_valid]
+            test_data = self.data[split_valid:]
+            test_targets = self.target[split_valid:]
+            self.data, self.target = (valid_data, valid_targets) if len(valid_data) > len(test_data) else (test_data, test_targets)
+            
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        img = self.data[idx]
+        target = self.target[idx]
+        
+        img = img.unsqueeze(0).float()
+        target = target.unsqueeze(0).float() / 255
+        target = target.reshape(-1,32,32)
+        
+        if self.target_transform:
+            target = self.target_transform(target)
+            
+        if self.transform:
+            img = self.transform(img)
+            
+        return img, target
+
 class MMF_SingleImageDataset(Dataset):
     def __init__(self,
                  root='./datasets/',
@@ -488,7 +539,8 @@ def create_dataloader(dataset_type: Literal['MNIST',
                                             'MMFGrayscale', 
                                             'MMFMNIST', 
                                             'MMFMNIST_GRAY', 
-                                            'MMFFMNIST_GRAY', 
+                                            'MMFFMNIST_GRAY',
+                                            'imgnet16', 
                                             'imgnet32', 
                                             'imgnet64', 
                                             'leopard2k'],
@@ -503,6 +555,7 @@ def create_dataloader(dataset_type: Literal['MNIST',
                             'MMFMNIST', 
                             'MMFMNIST_GRAY', 
                             'MMFFMNIST_GRAY', 
+                            'imgnet16',
                             'imgnet32', 
                             'imgnet64', 
                             'leopard2k'), f'dataset_type invalid, got {dataset_type}'
@@ -564,6 +617,16 @@ def create_dataloader(dataset_type: Literal['MNIST',
                                         train=True,
                                         target_transform=target_pipeline)
         validation_dataset = MMF_FMNISTDataset_grayscale(root=root,
+                                        train=False,
+                                        target_transform=target_pipeline)
+        # create loader
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    elif dataset_type == 'imgnet16':
+        train_dataset = MMF_imgNet16Dataset(root=root,
+                                        train=True,
+                                        target_transform=target_pipeline)
+        validation_dataset = MMF_imgNet16Dataset(root=root,
                                         train=False,
                                         target_transform=target_pipeline)
         # create loader
