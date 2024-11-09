@@ -30,7 +30,7 @@ if __name__ == '__main__':
     # set unet configs
     unet_config = {
         'blocks': 2,
-        'img_channels': 1,
+        'img_channels': 3,
         'base_channels': 10,
         'ch_mult': [1,2,4,8,8],
         'norm_type': 'batchnorm',

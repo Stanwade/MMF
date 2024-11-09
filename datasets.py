@@ -5,8 +5,11 @@ import os
 import torch
 import torchvision
 from torchvision import transforms
-from torchvision.datasets import MNIST
+from torchvision import io
+from torchvision.io import read_image
+from torchvision.datasets import MNIST, ImageFolder
 from typing import Literal
+import glob
 
 class MMF100m200Dataset(Dataset):
     
@@ -483,6 +486,30 @@ class MMF_SingleImageDataset(Dataset):
             
         return img, target
 
+class imgFolderDataset(Dataset):
+    
+    def __init__(self, root, expected_size=None, transforms_pipeline=None, postfix='.png'):
+        super().__init__()
+        self.filenames = glob.glob(root + '/*' + postfix)
+        # take filename as label
+        self.labels = [f.split('\\')[-1].split('.')[0] for f in self.filenames]
+        self.expected_size = expected_size
+        self.transforms_pipeline = transforms_pipeline
+
+    def __len__(self):
+        return len(self.filenames)
+
+    def __getitem__(self, idx):
+        filepath = self.filenames[idx]
+        img = read_image(filepath, mode=io.ImageReadMode.RGB)
+        # crop to expected size, do random resize and rotation first
+        if self.expected_size:
+            img = transforms.RandomResizedCrop(self.expected_size,
+                                               interpolation=transforms.InterpolationMode.BICUBIC)(img)
+        if self.transforms_pipeline:
+            img = self.transforms_pipeline(img)
+        return img, self.labels[idx]
+
 def create_dataloader(dataset_type: Literal['MNIST', 
                                             'MMF', 
                                             'MMFGrayscale', 
@@ -491,7 +518,8 @@ def create_dataloader(dataset_type: Literal['MNIST',
                                             'MMFFMNIST_GRAY', 
                                             'imgnet32', 
                                             'imgnet64', 
-                                            'leopard2k'],
+                                            'leopard2k',
+                                            'image_folder'],
                       root: str='./datasets/',
                       target_pipeline = None,
                       batch_size: int = 64,
@@ -599,6 +627,15 @@ def create_dataloader(dataset_type: Literal['MNIST',
         # create loader
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
         validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    elif dataset_type == 'image_folder':
+        train_dataset = imgFolderDataset(root=root,
+                                         expected_size=(64,64),
+                                         postfix='.jpeg',
+                                         target_transform=target_pipeline)
+        validation_dataset = imgFolderDataset(root=root,
+                                         expected_size=(64,64),
+                                         postfix='.jpeg',
+                                         target_transform=target_pipeline)
     else:
         raise NotImplementedError(f"dataset type {dataset_type} doesn't exist!")
     
