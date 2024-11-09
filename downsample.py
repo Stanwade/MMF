@@ -7,16 +7,25 @@ from torchvision import transforms
 import os
 import numpy as np
 
-dir = ''
-filename = 'patterns_gray.npy'
-new_filename = 'patterns_gray_16x16.npy'
-origin_patterns = torch.from_numpy(np.load(os.path.join(dir, filename)))
+dir = './datasets/imgnet32_rgbcycle_1'
+filename = 'pattern_gray.npy'
+new_filename = 'pattern_gray_16x16.npy'
+origin_patterns = torch.from_numpy(np.load(os.path.join(dir, filename))).reshape(-1,1,32,32)
+print(f'origin patterns shape: {origin_patterns.shape}')
 
 ds_size = 16
 downsample = transforms.Compose([
     transforms.Resize((16, 16), interpolation=transforms.InterpolationMode.NEAREST)
 ])
 
-new_patterns = downsample(origin_patterns)
+print('down sampling...')
+new_patterns = downsample(origin_patterns).reshape(origin_patterns.shape[0],-1)
+print(f'new patterns shape: {new_patterns.shape}')
+# exit('debug')
+# turn torch tensor to numpy
+new_patterns = new_patterns.numpy()
 
-torch.save(new_patterns, os.path.join(dir, new_filename))
+np.save(os.path.join(dir, new_filename), new_patterns)
+
+new_patterns = np.load(os.path.join(dir,new_filename))
+print(f'eval: new_patterns shape: {new_patterns.shape}')
