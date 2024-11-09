@@ -120,11 +120,11 @@ def sample_cfg(diffusion_model_dir:str,
     return outs_diffusion_rgb
 
 if __name__ == '__main__':
-    sample_cfg(diffusion_model_dir='./DiffusionModel/ckpts_imgnet32_cfg_wo_Down_Up/epoch=79-val_loss=0.0261.ckpt',
+    sample_cfg(diffusion_model_dir='./DiffusionModel/ckpts_imgnet16_2/epoch=49-val_loss=0.0422.ckpt',
                batch_size=5,
-               dataset_type='imgnet32',
+               dataset_type='imgnet16',
                img_channels=3,
-               cfg_weight=1.0,
+               cfg_weight=None,
                skip_to=8,
-               reconstruction_model_dir=None,
+               reconstruction_model_dir='./ReconstructionModel/ckpts_imgnet16/epoch=89-val_loss=0.0661.ckpt',
                img_dir='imgs')

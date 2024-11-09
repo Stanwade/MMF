@@ -31,12 +31,12 @@ if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
         'img_channels': 1,
-        'base_channels': 10,
+        'base_channels': 16,
         'ch_mult': [1,2,4,8,8],
         'norm_type': 'batchnorm',
         'activation': 'relu',
         'pe_dim': 128,
-        'with_attn': [False, False, False, False, True],
+        'with_attn': [False, False, False, True, True],
         'down_up_sample': False
     }
     
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='DiffusionModel/ckpts_imgnet32_cfg_wo_Down_Up',
+        dirpath='DiffusionModel/ckpts_imgnet16_2',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -59,18 +59,18 @@ if __name__ == '__main__':
         mode= 'min'
     )
     
-    img_size = 32
+    img_size = 16
     
-    dataset_type = 'imgnet32'
+    dataset_type = 'imgnet16'
     
     # create model
     model = DiffusionModel(unet_config=unet_config, 
-                           cfg=3.0, 
-                           reconstruction_model_dir='./ReconstructionModel/ckpts_imgnet32_real/epoch=99-val_loss=0.0078-v1.ckpt')
+                           cfg=None, 
+                           reconstruction_model_dir='./ReconstructionModel/ckpts_imgnet16/epoch=89-val_loss=0.0661.ckpt')
     
     # define target transform pipeline, turn a [1,16,16] into [1,64,64]
     target_pipeline = transforms.Compose([
-        transforms.Resize( (img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
+        transforms.Resize( (img_size, img_size), interpolation=transforms.InterpolationMode.BICUBIC)
     ])
     
     train_loader, validation_loader = create_dataloader(dataset_type=dataset_type, target_pipeline=target_pipeline)
@@ -78,5 +78,5 @@ if __name__ == '__main__':
     train_diffusion_model(model,
                           train_loader,
                           validation_loader,
-                          num_epochs=100,
+                          num_epochs=50,
                           callbacks=[model_checkpoint_callback])

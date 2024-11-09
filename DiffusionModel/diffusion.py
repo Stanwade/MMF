@@ -283,11 +283,11 @@ class DiffusionModel(pl.LightningModule):
         else:
             if skip_to is not None:
                 for t in reversed(range(skip_to)):
-                    # print(f'ddpm sampling step {t}')
+                    print(f'ddpm sampling step {t}',end='\r')
                     xt = self.sample_backward_step(xt, t, simple_var)
             else:
                 for t in reversed(range(self.n_steps)):
-                    # print(f'ddpm sampling step {t}')
+                    print(f'ddpm sampling step {t}',end='\r')
                     xt = self.sample_backward_step(xt, t, simple_var)    
             return xt
     @torch.no_grad()

@@ -473,7 +473,7 @@ class MMF_imgNet16Dataset(Dataset):
         
         img = img.unsqueeze(0).float()
         target = target.unsqueeze(0).float() / 255
-        target = target.reshape(-1,32,32)
+        target = target.reshape(-1,16,16)
         
         if self.target_transform:
             target = self.target_transform(target)

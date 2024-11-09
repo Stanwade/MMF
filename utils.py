@@ -17,7 +17,7 @@ def plot_imgs(inputs,name:str, dir:str='imgs', figsize = (16,16), str_list: List
     col = min(inputs.size(0),5)
     fig, axes = plt.subplots(nrows=1, ncols=col, figsize=figsize)
     for idx in range(col):
-        axes[idx].imshow(inputs[idx].squeeze().numpy(), cmap=cmap)
+        axes[idx].imshow(inputs[idx].squeeze().detach().numpy(), cmap=cmap)
         axes[idx].set_xticks([])
         axes[idx].set_yticks([])
         
