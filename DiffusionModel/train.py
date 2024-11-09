@@ -44,7 +44,7 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='DiffusionModel/ckpts_imgnet16_2',
+        dirpath='DiffusionModel/ckpts_imgnet64_50000',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
@@ -59,7 +59,7 @@ if __name__ == '__main__':
         mode= 'min'
     )
     
-    img_size = 16
+    img_size = 64
     
     dataset_type = 'imgnet16'
     
@@ -73,7 +73,11 @@ if __name__ == '__main__':
         transforms.Resize( (img_size, img_size), interpolation=transforms.InterpolationMode.BICUBIC)
     ])
     
-    train_loader, validation_loader = create_dataloader(dataset_type=dataset_type, target_pipeline=target_pipeline)
+    # train_loader, validation_loader = create_dataloader(dataset_type=dataset_type, target_pipeline=target_pipeline)
+    from datasets import imgFolderDataset
+    train_set = imgFolderDataset('./datasets/ILSVRC2012_img_val',expected_size=(64,64),postfix='.JPEG')
+    train_loader = DataLoader(train_set,batch_size=64,shuffle=True)
+    validation_loader = DataLoader(train_set, batch_size=64,shuffle=False)
     
     train_diffusion_model(model,
                           train_loader,

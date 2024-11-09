@@ -81,7 +81,7 @@ class DiffusionModel(pl.LightningModule):
                  reconstruction_model_dir: str = 'ReconstructionModel/ckpts_mnist/epoch=109-val_loss=0.0176.ckpt'):
         super().__init__()
         self.save_hyperparameters()
-        self.example_input_array = torch.Tensor(64,1,64,64)
+        self.example_input_array = torch.Tensor(64,3,64,64)
         self.unet = UNet(**unet_config, n_steps=n_steps, with_cond=(cfg is not None))
         self.n_steps = n_steps
         self.min_beta = min_beta
@@ -198,7 +198,7 @@ class DiffusionModel(pl.LightningModule):
                 c = torch.clamp(c, 0, 1)
                 # print(f'c shape {c.shape}')
                 
-        
+        print(f'wasd: x is {x.dtype}')
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         

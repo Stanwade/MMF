@@ -32,13 +32,8 @@ class imgFolderDataset(Dataset):
     
 if "__main__" == __name__:
     root = './imgs'
-    dataset = imgFolderDataset(root=root, expected_size=(64,64), postfix='.png')
-    dataloader = DataLoader(dataset=dataset,
-                             batch_size=1,
-                             shuffle=True)
-    for inputs, labels in dataloader:
-        print(inputs.shape)
-        plt.imshow(inputs.squeeze().numpy().transpose(1,2,0))
-        # save image
-        plt.savefig(f'./imgs/croped/{labels[0]}.png')
-        print(labels)
+    import numpy as np
+    img_path = './datasets/ILSVRC2012_img_val/*.JPEG'
+    filenames = glob.glob(img_path)
+    print(filenames)
+    print(f'len of filename: {len(filenames)}')

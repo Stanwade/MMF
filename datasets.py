@@ -559,7 +559,7 @@ class imgFolderDataset(Dataset):
                                                interpolation=transforms.InterpolationMode.BICUBIC)(img)
         if self.transforms_pipeline:
             img = self.transforms_pipeline(img)
-        return img, self.labels[idx]
+        return self.labels[idx], img
 
 def create_dataloader(dataset_type: Literal['MNIST', 
                                             'MMF', 
