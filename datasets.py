@@ -553,12 +553,17 @@ class imgFolderDataset(Dataset):
     def __getitem__(self, idx):
         filepath = self.filenames[idx]
         img = read_image(filepath, mode=io.ImageReadMode.RGB)
+        img = torch.float32(img)
         # crop to expected size, do random resize and rotation first
         if self.expected_size:
             img = transforms.RandomResizedCrop(self.expected_size,
                                                interpolation=transforms.InterpolationMode.BICUBIC)(img)
         if self.transforms_pipeline:
             img = self.transforms_pipeline(img)
+        
+        # normalize
+        img = transforms.Normalize((0.485,0.456,0.406), (0.229,0.224,0.225))(img)
+        
         return self.labels[idx], img
 
 def create_dataloader(dataset_type: Literal['MNIST', 
