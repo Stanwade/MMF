@@ -396,10 +396,10 @@ class MMF_imgNet64Dataset(Dataset):
         self.train = train
         self.transform = transform
         self.target_transform = target_transform
-        self.data_folder = os.path.join(root, 'imgnet64_1500')
+        self.data_folder = os.path.join(root, 'img64')
         
-        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'speckles_merged.npy')).astype(np.float32))
-        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'pattern_gray.npy')).astype(np.float32))
+        self.data = torch.from_numpy((np.load(os.path.join(self.data_folder,'speckles_intensity_only.npy'))).astype(np.float32))
+        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, '64_pattern_sum.npy')).astype(np.float32))
         
         dataset_size = len(self.data)
         indices = list(range(dataset_size))
@@ -425,7 +425,6 @@ class MMF_imgNet64Dataset(Dataset):
         
         img = img.unsqueeze(0).float()
         target = target.unsqueeze(0).float() / 255
-        target = target.reshape(-1,32,32)
         
         if self.target_transform:
             target = self.target_transform(target)
@@ -552,11 +551,12 @@ class imgFolderDataset(Dataset):
 
     def __getitem__(self, idx):
         filepath = self.filenames[idx]
-        img = read_image(filepath, mode=io.ImageReadMode.RGB)
-        img = torch.float32(img)
+        img = read_image(filepath, mode=io.ImageReadMode.RGB).float() / 255
         # crop to expected size, do random resize and rotation first
         if self.expected_size:
             img = transforms.RandomResizedCrop(self.expected_size,
+                                               scale=(0.8,1),
+                                               ratio=(9/10,10/9),
                                                interpolation=transforms.InterpolationMode.BICUBIC)(img)
         if self.transforms_pipeline:
             img = self.transforms_pipeline(img)

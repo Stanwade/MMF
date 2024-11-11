@@ -33,7 +33,7 @@ class imgFolderDataset(Dataset):
 if "__main__" == __name__:
     root = './imgs'
     import numpy as np
-    img_path = './datasets/ILSVRC2012_img_val/*.JPEG'
-    filenames = glob.glob(img_path)
-    print(filenames)
-    print(f'len of filename: {len(filenames)}')
+    a = np.load('./datasets/img64/64_pattern_sum.npy')
+    print(a.shape)
+    b = (np.load('./datasets/img64/speckles_intensity_only.npy'))
+    print(b.shape)

@@ -13,6 +13,10 @@ def create_norm(in_channels, norm_type="batchnorm"):
         return nn.BatchNorm2d(in_channels)
     elif norm_type == "instancenorm":
         return nn.InstanceNorm2d(in_channels)
+    elif norm_type == "groupnorm":
+        return nn.GroupNorm(32, in_channels)
+    elif norm_type == 'none':
+        return nn.Identity()
     else:
         raise NotImplementedError
 

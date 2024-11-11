@@ -5,6 +5,8 @@ import torch.optim as optim
 from torchvision import transforms
 import math
 from typing import Optional, Union, List
+from .lion_pytorch import Lion
+
 if __name__ == "__main__":
     # add sys path
     import sys
@@ -198,7 +200,6 @@ class DiffusionModel(pl.LightningModule):
                 c = torch.clamp(c, 0, 1)
                 # print(f'c shape {c.shape}')
                 
-        print(f'wasd: x is {x.dtype}')
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         
@@ -211,11 +212,15 @@ class DiffusionModel(pl.LightningModule):
         return val_loss
         
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters())
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                         mode='min',
-                                                         factor=0.1,
-                                                         patience=5)
+        # optimizer = optim.AdamW(self.parameters(),lr=1e-4)
+        optimizer = Lion(self.parameters(), lr=2e-5, weight_decay=0.1, betas=(0.9,0.95))
+        # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+        #                                                  mode='min',
+        #                                                  factor=0.1,
+        #                                                  patience=5)
+        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer,
+                                                                   T_0=10,
+                                                                   T_mult=2)
         return {'optimizer': optimizer,
                 'lr_scheduler': {
                     'scheduler': scheduler,

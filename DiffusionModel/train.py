@@ -8,13 +8,14 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, SubsetRandomSampler
 from torchvision import transforms
 from datasets import create_dataloader
 
 # train.py
 
 def train_diffusion_model(diffusion_model, train_loader, validation_loader, num_epochs=100, callbacks=[]):
+    torch.set_float32_matmul_precision('high')
     trainer = Trainer(max_epochs=num_epochs, callbacks=callbacks, devices='0,1')
     diffusion_model_trainer = diffusion_model
     trainer.fit(diffusion_model_trainer,
@@ -31,13 +32,13 @@ if __name__ == '__main__':
     unet_config = {
         'blocks': 2,
         'img_channels': 3,
-        'base_channels': 10,
+        'base_channels': 32,
         'ch_mult': [1,2,4,8,8],
-        'norm_type': 'batchnorm',
-        'activation': 'relu',
+        'norm_type': 'groupnorm',
+        'activation': 'silu',
         'pe_dim': 128,
-        'with_attn': [False, False, False, True, True],
-        'down_up_sample': False
+        'with_attn': [False, True, True, True, False],
+        'down_up_sample': True
     }
     
     # set modelcheckpoint config
@@ -76,11 +77,13 @@ if __name__ == '__main__':
     # train_loader, validation_loader = create_dataloader(dataset_type=dataset_type, target_pipeline=target_pipeline)
     from datasets import imgFolderDataset
     train_set = imgFolderDataset('./datasets/ILSVRC2012_img_val',expected_size=(64,64),postfix='.JPEG')
-    train_loader = DataLoader(train_set,batch_size=64,shuffle=True)
-    validation_loader = DataLoader(train_set, batch_size=64,shuffle=False)
+    train_loader = DataLoader(train_set,batch_size=256,shuffle=True)
+    indices = torch.randperm(1000)[:512]
+    valid_sampler = SubsetRandomSampler(indices)
+    validation_loader = DataLoader(train_set, batch_size=128,shuffle=False,sampler=valid_sampler)
     
     train_diffusion_model(model,
                           train_loader,
                           validation_loader,
-                          num_epochs=50,
+                          num_epochs=100,
                           callbacks=[model_checkpoint_callback])
