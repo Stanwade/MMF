@@ -83,7 +83,7 @@ class DiffusionModel(pl.LightningModule):
                  reconstruction_model_dir: str = 'ReconstructionModel/ckpts_mnist/epoch=109-val_loss=0.0176.ckpt'):
         super().__init__()
         self.save_hyperparameters()
-        self.example_input_array = torch.Tensor(64,3,64,64)
+        # self.example_input_array = torch.Tensor(64,3,64,64)
         self.unet = UNet(**unet_config, n_steps=n_steps, with_cond=(cfg is not None))
         self.n_steps = n_steps
         self.min_beta = min_beta
@@ -136,35 +136,42 @@ class DiffusionModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         
         # exit('debug finished')
-        _, x = batch
+        y, x = batch
+        # print(f'wasd: y shape:{y.shape}, x_shape:{x.shape}')
         
         if self.cfg is not None:
             with torch.no_grad():
                 # init condition mask
-                y = batch[0]
                 cond_mask = torch.tensor(torch.rand(size=(len(x),)) <= self.cfg_drop, device=x.device)
                 
                 # make conditions
                 c = self.r_model(y)
                 
                 # set condition mask, if True, set to 0
-                c[cond_mask] = torch.ones_like(c[0])
-                
-                # repeat this 3 times in channel for CLIP embedding
-                c = c.repeat(1,3,1,1)
+                c[cond_mask] = torch.zeros_like(c[0])
                 
                 transform = transforms.Resize(size=(x.shape[2],x.shape[3]),
                                               interpolation=transforms.InterpolationMode.BICUBIC)
                 c = transform(c)
-                c = torch.clamp(c, 0, 1)
         
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         
         xt = self.sample_forward(x, t, eps)
+        # print(f'xt shape: {xt.shape}')
         
         eps_theta = self.unet(xt, t, c if self.cfg is not None else None)
+        # # if epochs >= 10 add final prediction loss else add 0
+        # if self.current_epoch >= 100:
+        #     final_prediction = self.sample_backward(c,device=self.device, cfg_act=(self.cfg is not None), skip_to=10)
+        #     final_loss = F.mse_loss(final_prediction, x)
+        #     self.log('final_loss', final_loss, sync_dist=True)
+        # else:
+        #     final_loss = torch.zeros(1).to(self.device)
+        #     self.log('final_loss', final_loss, sync_dist=True)
         
+        
+        # train_loss = F.mse_loss(eps_theta, eps) + 0.1 * final_loss
         train_loss = F.mse_loss(eps_theta, eps)
         self.log('train_loss', train_loss, sync_dist=True)
         
@@ -174,41 +181,38 @@ class DiffusionModel(pl.LightningModule):
         return train_loss
     
     def validation_step(self, batch, batch_idx):
-        _, x = batch
-        # print(f'in valid x shape {x.shape}')
+        # exit('debug finished')
+        y, x = batch
+        # print(f'wasd: y shape:{y.shape}, x_shape:{x.shape}')
         if self.cfg is not None:
             with torch.no_grad():
-                y = batch[0]
                 # init condition mask
                 cond_mask = torch.tensor(torch.rand(size=(len(x),)) <= self.cfg_drop, device=x.device)
                 
                 # make conditions
-                # print(f'y shape {y.shape}, y max: {torch.max(y)}, y min: {torch.min(y)}')
                 c = self.r_model(y)
                 
-                # print(f'in valid step')
-                # print(f'Diff: c max {torch.max(c)} c min {torch.min(c)}')
-                
                 # set condition mask, if True, set to 0
-                c[cond_mask] = torch.ones_like(c[0])
-                # repeat this 3 times in channel for CLIP embedding
-                c = c.repeat(1,3,1,1)
+                c[cond_mask] = torch.zeros_like(c[0])
                 
                 transform = transforms.Resize(size=(x.shape[2],x.shape[3]),
                                               interpolation=transforms.InterpolationMode.BICUBIC)
                 c = transform(c)
-                c = torch.clamp(c, 0, 1)
-                # print(f'c shape {c.shape}')
-                
+        
         eps = torch.randn_like(x)
         t = torch.randint(0, self.n_steps, (x.size(0),),device=self.device)
         
         xt = self.sample_forward(x, t, eps)
+        # print(f'xt shape: {xt.shape}')
         
         eps_theta = self.unet(xt, t, c if self.cfg is not None else None)
         
         val_loss = F.mse_loss(eps_theta, eps)
         self.log('val_loss', val_loss, sync_dist=True)
+        
+        lr = self.trainer.optimizers[0].param_groups[0]['lr']
+        self.log('learning rate', lr, on_step=True, sync_dist=True)
+        
         return val_loss
         
     def configure_optimizers(self):
@@ -251,27 +255,31 @@ class DiffusionModel(pl.LightningModule):
     @torch.no_grad()
     def sample_backward(self, img, device, simple_var=False, skip_to:Optional[int] = 100, cfg_act:bool = True):
         self.eval()
-        xt: torch.Tensor = img.to(device)
+        if skip_to is not None:
+            xt: torch.Tensor = img.to(device)
+        else:
+            xt = torch.randn_like(img).to(device)
         net = self.unet 
         net = net.to(device)
         # print(f'xt shape {xt.shape}')
         if self.cfg is not None and cfg_act:
             # TODO: write cfg guidance diffusion
-            # c = self.r_model(xt)
-            c = xt
+            c = img.to(device)
             
             # duplicate xt
             xt = torch.concat([xt] * 2, dim=0)
+            # print(f'xt shape {xt.shape}')
             
             # concat empty condition and c
-            c_concat = torch.concat([torch.ones_like(c), c], dim=0).repeat(1,3,1,1).clamp(0, 1)
-            
+            c_concat = torch.concat([torch.zeros_like(c), c], dim=0)
+            # print(f'c_concat shape {c_concat.shape}')
             
             # sample
             if skip_to is not None:
                 for t in reversed(range(skip_to)):
                     print(f'ddpm sampling step {t}', end='\r')
                     xt = self.sample_backward_step(xt, t, c_concat, simple_var)
+                    # print(f'xt out shape {xt.shape}')
             else:
                 for t in reversed(range(self.n_steps)):
                     print(f'ddpm sampling step {t}', end='\r')

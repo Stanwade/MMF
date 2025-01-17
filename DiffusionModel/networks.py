@@ -104,8 +104,7 @@ class ResBlock(nn.Module):
                  stride=1,
                  bias=False,
                  activation="lrelu",
-                 norm_type="batchnorm",
-                 with_cond: bool = False):
+                 norm_type="batchnorm"):
         super(ResBlock, self).__init__()
         self.norm1 = create_norm(in_channels, norm_type)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=bias)
@@ -123,16 +122,11 @@ class ResBlock(nn.Module):
         self.time_emb = nn.Linear(time_emb_channels, out_channels*2)
         nn.init.constant_(self.time_emb.weight, 0)
         nn.init.constant_(self.time_emb.bias, 0)
-        
-        self.with_cond = with_cond
-        if with_cond:
-            self.cond_emb = nn.Linear(time_emb_channels, out_channels*2)
-            nn.init.constant_(self.cond_emb.weight, 0)
-            nn.init.constant_(self.cond_emb.bias, 0)
+
         
         self.act = create_activation(activation)
         
-    def forward(self, x, t_emb: torch.Tensor, c_emb: Optional[torch.Tensor] = None):
+    def forward(self, x, t_emb: torch.Tensor):
         # print(x.size())
         h = self.norm1(x)
         h = self.act(h)                     # b, c, h, w
@@ -142,10 +136,6 @@ class ResBlock(nn.Module):
         scale, shift = torch.chunk(time_emb, 2, dim=1)
         h = h * (scale + 1) + shift
         
-        if self.with_cond and c_emb is not None:
-            cond_emb = self.cond_emb(c_emb).unsqueeze(-1).unsqueeze(-1)
-            scale, shift = torch.chunk(cond_emb, 2, dim=1)
-            h = h * (scale + 1) + shift
         
         h = self.norm2(h)
         h = self.act(h)
@@ -200,24 +190,21 @@ class ResAttnBlock(nn.Module):
                  time_emb_channels,
                  with_attn=False,
                  norm_type="batchnorm",
-                 activation="lrelu",
-                 with_cond: bool = False):
+                 activation="lrelu"):
         super(ResAttnBlock, self).__init__()
         self.res_block = ResBlock(in_channels, 
                                   out_channels, 
                                   time_emb_channels, 
                                   norm_type=norm_type, 
-                                  activation=activation,
-                                  with_cond=with_cond)
+                                  activation=activation)
         if with_attn:
             self.attn_block = SelfAttnBlock(out_channels, norm_type=norm_type)
         else:
             self.attn_block = nn.Identity()
         
-        self.with_cond = with_cond
         
-    def forward(self, x, t_emb, c_emb: Optional[torch.Tensor] = None):
-        x = self.res_block(x, t_emb, c_emb)
+    def forward(self, x, t_emb):
+        x = self.res_block(x, t_emb)
         x = self.attn_block(x)
         return x
 
@@ -229,30 +216,27 @@ class ResAttnBlockMiddle(nn.Module):
                  time_emb_channels,
                  with_attn=False,
                  norm_type="batchnorm",
-                 activation="lrelu",
-                 with_cond: bool = False):
+                 activation="lrelu"):
         super(ResAttnBlockMiddle, self).__init__()
         self.res_block1 = ResBlock(in_channels,
                                   out_channels,
                                   time_emb_channels,
                                   norm_type=norm_type,
-                                  activation=activation,
-                                  with_cond=with_cond)
+                                  activation=activation)
         self.res_block2 = ResBlock(out_channels,
                                   out_channels,
                                   time_emb_channels,
                                   norm_type=norm_type,
-                                  activation=activation,
-                                  with_cond=with_cond)
+                                  activation=activation)
         if with_attn:
             self.attn_block = SelfAttnBlock(out_channels, norm_type=norm_type)
         else:
             self.attn_block = nn.Identity()
             
-    def forward(self, x, t_emb, c_emb: Optional[torch.Tensor] = None):
-        x = self.res_block1(x, t_emb, c_emb)
+    def forward(self, x, t_emb):
+        x = self.res_block1(x, t_emb)
         x = self.attn_block(x)
-        x = self.res_block2(x, t_emb, c_emb)
+        x = self.res_block2(x, t_emb)
         return x
 
 
@@ -300,8 +284,7 @@ class UNetLevel(nn.Module):
                  with_attn: bool = False,
                  norm_type="batchnorm",
                  activation="lrelu",
-                 down_up_sample: bool = True,
-                 with_cond: bool = False
+                 down_up_sample: bool = True
                  ):
         super(UNetLevel, self).__init__()
         self.downs = nn.ModuleList([])
@@ -314,15 +297,13 @@ class UNetLevel(nn.Module):
                                            time_emb_channels,
                                            with_attn=with_attn,
                                            norm_type=norm_type,
-                                           activation=activation,
-                                           with_cond=with_cond))
+                                           activation=activation))
             self.ups.insert(0, ResAttnBlock(mid_channels*2,
                                             inout_channels,
                                             time_emb_channels,
                                             with_attn=with_attn,
                                             norm_type=norm_type,
-                                            activation=activation,
-                                            with_cond=with_cond))
+                                            activation=activation))
             inout_channels = mid_channels
         
         if down_up_sample:
@@ -334,19 +315,19 @@ class UNetLevel(nn.Module):
         
         self.mid_block = mid_block
         
-    def forward(self, x: torch.Tensor, t_emb: torch.Tensor, c_emb: Optional[torch.Tensor] = None):
+    def forward(self, x: torch.Tensor, t_emb: torch.Tensor):
         hs = []
         for down in self.downs:
-            x = down(x, t_emb, c_emb)
+            x = down(x, t_emb)
             hs.append(x)
 
         x = self.down(x)
-        x = self.mid_block(x, t_emb, c_emb)
+        x = self.mid_block(x, t_emb)
         x = self.up(x)
         
         for up in self.ups:
             h = hs.pop()
-            x = up(torch.concat((h,x), dim=1), t_emb, c_emb)
+            x = up(torch.concat((h,x), dim=1), t_emb)
         
         return x
 
@@ -364,7 +345,8 @@ class UNet(nn.Module):
         activation="lrelu",
         with_attn: Union[bool, List[bool]] = False,
         down_up_sample: bool = True,
-        with_cond: bool = False
+        with_cond: bool = False,
+        condition_channels: int = 0
     ):
         super(UNet, self).__init__()
         
@@ -374,11 +356,14 @@ class UNet(nn.Module):
         self.with_attn = [with_attn] * self.levels if isinstance(with_attn, bool) else with_attn
         
         in_out = list(zip(dims[:-1], dims[1:], self.with_attn[:-1]))
-        self.img_channels = img_channels
+
         
-        
-        
-        self.in_proj = nn.Conv2d(img_channels, base_channels, 3, padding=1, stride=1)
+        if with_cond:
+            if condition_channels == 0:
+                raise ValueError("Condition channels must be greater than 0 if with_cond is True!")
+            self.in_proj = nn.Conv2d(img_channels+condition_channels, base_channels, 3, padding=1, stride=1)
+        else:
+            self.in_proj = nn.Conv2d(img_channels, base_channels, 3, padding=1, stride=1)
         self.out_proj = nn.Sequential(
             # nn.GroupNorm(32, base_channels),
             # nn.Mish(),
@@ -398,14 +383,6 @@ class UNet(nn.Module):
         )
         
         self.with_cond = with_cond
-        if with_cond:
-            self.ce:CondEmbedding = CondEmbedding(model_dir="./openai/clip-vit-base-patch32")
-            self.ce.requires_grad_(False)
-            self.ce_linears = nn.Sequential(
-                nn.Linear(512, self.time_emb_dim),
-                create_activation(activation),
-                nn.Linear(self.time_emb_dim, self.time_emb_dim)
-            )
         
         # build unet
         # begin with middle block
@@ -415,13 +392,11 @@ class UNet(nn.Module):
                                             self.time_emb_dim,
                                             with_attn=self.with_attn[-1],
                                             norm_type=norm_type,
-                                            activation=activation,
-                                            with_cond=with_cond)
+                                            activation=activation)
         else:
             now_blocks = ResBlock(base_channels*ch_mult[-1], 
                                   base_channels*ch_mult[-1], 
-                                  self.time_emb_dim, 
-                                  with_cond=with_cond)
+                                  self.time_emb_dim)
         for inout_ch, mid_ch, attn in reversed(in_out):
             now_blocks = UNetLevel(blocks,
                                    inout_ch,
@@ -431,8 +406,7 @@ class UNet(nn.Module):
                                    with_attn=attn,
                                    norm_type=norm_type,
                                    activation=activation,
-                                   down_up_sample=down_up_sample,
-                                   with_cond=with_cond)
+                                   down_up_sample=down_up_sample)
         
         self.unet = now_blocks
     
@@ -440,73 +414,14 @@ class UNet(nn.Module):
         # t_emb = self.time_emb(t)
         t = self.pe(t)
         t_emb_proj = self.pe_linears(t)
-        
+        # print(f"x in shape: {x.shape}, t_emb_proj shape: {t_emb_proj.shape}")
         if self.with_cond and c is not None:
-            # print(f'Unet: ce input max: {torch.max(c)}')
-            c = self.ce(c)
-            c_emb_proj = self.ce_linears(c)
-            # print('projected c shape: ', c_emb_proj.shape)
-        else:
-            c_emb_proj = None
+            x = torch.concat((x, c), dim=1)
+            # print(f"concatenated x shape: {x.shape}")
+        elif self.with_cond and c is None:
+            raise ValueError("Condition cannot be None when with_cond is True!")
         
         x = self.in_proj(x)
         # print('projected x shape: ', x.shape)
-        return self.out_proj(self.unet(x, t_emb_proj, c_emb_proj))
+        return self.out_proj(self.unet(x, t_emb_proj))
 
-
-if __name__ == "__main__":
-    batch_size = 32
-    img_channels = 3
-    img_h, img_w = 64, 64
-    time_emb_dim = 64
-    time_emb = TimeEmbedding(time_emb_dim)
-    resblock = ResBlock(128, 128, 64)
-    unet_level = UNetLevel(3, img_channels, 128, time_emb_dim, resblock)
-    selfattnblock = SelfAttnBlock(img_channels)
-    
-    test_x = torch.randn(batch_size,img_channels,img_h,img_w)
-    test_t = torch.randint(0, 1000, (1,))
-    test_cond = torch.randint(0,255,(batch_size, img_channels, img_h, img_w))
-    print(f'test t :{test_t}')
-    
-    a = selfattnblock(test_x)
-    print('a: ', a.shape)
-    
-    t_emb = time_emb(test_t)
-    print('t_emb: ', t_emb.shape)
-    
-    test_out = unet_level(test_x, t_emb)
-    print('test_out: ', test_out.shape)
-    
-    cond_emb = CondEmbedding(model_dir=r'D:\00_localDemos\MMF_Demo\openai\clip-vit-base-patch32')
-    c_emb: torch.Tensor = cond_emb(test_cond)
-    print('cond emb: ', c_emb.shape)
-    
-    # transform c_emb into same shape with image
-    # c_emb = c_emb.view(-1, 2, 16, 16)
-    # scale = transforms.Resize((img_h, img_w), interpolation=transforms.InterpolationMode.BICUBIC)
-    # c_emb = torch.concat([scale(c_emb)] * batch_size)
-    # print('cond emb: ', c_emb.shape)
-    
-    # # concat x and c_emb
-    # test_x = torch.cat([test_x, c_emb], dim=1)
-    # print('test_x: ', test_x.shape)
-    
-    
-    unet_config = {
-        'blocks': 2,
-        'img_channels': img_channels,
-        'base_channels': 64,
-        'ch_mult': [1,2,4,4],
-        'norm_type': 'batchnorm',
-        'activation': 'lrelu',
-        'with_attn': [False,False,False,True],
-        'down_up_sample': True,
-        'with_cond': True
-    }
-    
-    unet = UNet(**unet_config)
-    test_out = unet(test_x, test_t, test_cond)
-    print('unet test_out: ', test_out.shape)
-    print(f'luo yu hong test')
-    

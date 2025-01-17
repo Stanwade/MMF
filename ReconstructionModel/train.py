@@ -40,15 +40,15 @@ if __name__ == '__main__':
     model_checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         filename='{epoch}-{val_loss:.4f}',
-        dirpath='ReconstructionModel/ckpts_imgnet64_50000',
+        dirpath='ReconstructionModel/ckpts_imgnet32',
         mode='min',
         every_n_epochs=10,
         save_top_k=3,
         save_last=True
     )
     
-    dataset_type = 'imgnet64'
-    label_size = 64
+    dataset_type = 'imgnet32'
+    label_size = 32
     
     train_dataset, valid_dataset, train_loader, valid_loader = create_dataloader(dataset_type,need_datasets=True)
     

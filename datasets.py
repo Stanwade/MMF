@@ -555,16 +555,68 @@ class imgFolderDataset(Dataset):
         # crop to expected size, do random resize and rotation first
         if self.expected_size:
             img = transforms.RandomResizedCrop(self.expected_size,
-                                               scale=(0.8,1),
+                                               scale=(0.9,1),
                                                ratio=(9/10,10/9),
                                                interpolation=transforms.InterpolationMode.BICUBIC)(img)
         if self.transforms_pipeline:
             img = self.transforms_pipeline(img)
         
         # normalize
-        img = transforms.Normalize((0.485,0.456,0.406), (0.229,0.224,0.225))(img)
+        # img = transforms.Normalize((0.485,0.456,0.406), (0.229,0.224,0.225))(img)
         
         return self.labels[idx], img
+
+class CelebHQ64Dataset(Dataset):
+    def __init__(self,
+                 root='./datasets/',
+                 train=True,
+                 transform=None,
+                 target_transform = None,
+                 train_size=0.9,
+                 valid_size=0.05) -> None:
+        super().__init__()
+        self.train = train
+        self.transform = transform
+        self.target_transform = target_transform
+        self.data_folder = os.path.join(root, 'face')
+        
+        self.data = torch.from_numpy(np.load(os.path.join(self.data_folder,'speckles.npy')).astype(np.float32))
+        self.target = torch.from_numpy(np.load(os.path.join(self.data_folder, 'face.npy')).astype(np.float32))
+        
+        dataset_size = len(self.data)
+        indices = list(range(dataset_size))
+        split_train = int(np.floor(train_size * dataset_size))
+        split_valid = int(np.floor((train_size + valid_size) * dataset_size))
+        
+        if train:
+            self.data = self.data[:split_train]
+            self.target = self.target[:split_train]
+        else:
+            valid_data = self.data[split_train:split_valid]
+            valid_targets = self.target[split_train:split_valid]
+            test_data = self.data[split_valid:]
+            test_targets = self.target[split_valid:]
+            self.data, self.target = (valid_data, valid_targets) if len(valid_data) > len(test_data) else (test_data, test_targets)
+            
+    def __len__(self):
+        return len(self.target)
+    
+    def __getitem__(self, idx):
+        img = self.data[idx]
+        target = self.target[idx]
+        
+        img = img.unsqueeze(0).float()
+        target = target.unsqueeze(0).float() / 255
+        
+        if self.target_transform:
+            target = self.target_transform(target)
+            
+        if self.transform:
+            img = self.transform(img)
+
+        # print(img.shape, target.shape)
+            
+        return img.squeeze(0), target.squeeze(0)
 
 def create_dataloader(dataset_type: Literal['MNIST', 
                                             'MMF', 
@@ -576,7 +628,8 @@ def create_dataloader(dataset_type: Literal['MNIST',
                                             'imgnet32', 
                                             'imgnet64', 
                                             'leopard2k',
-                                            'image_folder'],
+                                            'image_folder',
+                                            'celebHQ64'],
                       root: str='./datasets/',
                       target_pipeline = None,
                       batch_size: int = 64,
@@ -591,7 +644,8 @@ def create_dataloader(dataset_type: Literal['MNIST',
                             'imgnet16',
                             'imgnet32', 
                             'imgnet64', 
-                            'leopard2k'), f'dataset_type invalid, got {dataset_type}'
+                            'leopard2k',
+                            'celebHQ64'), f'dataset_type invalid, got {dataset_type}'
     if dataset_type == 'MNIST':
         train_dataset = MNISTDataset(root=root, train=True, transform=target_pipeline)
         validation_dataset = MNISTDataset(root=root, train=False, transform=target_pipeline)
@@ -704,6 +758,15 @@ def create_dataloader(dataset_type: Literal['MNIST',
                                          expected_size=(64,64),
                                          postfix='.jpeg',
                                          target_transform=target_pipeline)
+    elif dataset_type == 'celebHQ64':
+        train_dataset = CelebHQ64Dataset(root=root,
+                                         train=True,
+                                         target_transform=target_pipeline)
+        validation_dataset = CelebHQ64Dataset(root=root,
+                                         train=False,
+                                         target_transform=target_pipeline)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     else:
         raise NotImplementedError(f"dataset type {dataset_type} doesn't exist!")
     
@@ -724,7 +787,7 @@ if __name__ == '__main__':
         transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST)
         ])
     
-    dataset = MMFMNISTDataset(root='./datasets', train=True)
+    dataset = CelebHQ64Dataset(root='./datasets', train=True)
     
     a = dataset.__getitem__(0)
     print(a[0].shape)
@@ -739,10 +802,10 @@ if __name__ == '__main__':
     print(f'label max {torch.max(a[1])}')
     print(f'label min {torch.min(a[1])}')
     
-    dataloader = DataLoader(dataset, batch_size=5, shuffle=False)
-    test_data = dataloader.__iter__().__next__()
+    # dataloader = DataLoader(dataset, batch_size=5, shuffle=False)
+    # test_data = dataloader.__iter__().__next__()
     
     
-    from utils import plot_imgs
-    plot_imgs(test_data[0], 'test1')
-    plot_imgs(test_data[1], 'test2')
+    # from utils import plot_imgs
+    # plot_imgs(test_data[0], 'test1')
+    # plot_imgs(test_data[1], 'test2')

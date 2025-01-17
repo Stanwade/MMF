@@ -142,7 +142,7 @@ def sample_cfg(diffusion_model_dir:str,
     plot_imgs(outs_recon_rgb, name='03_out_recon',cmap=None, dir=img_dir)
     plot_imgs(outs_diffusion_rgb, name='04_out_diffusion',cmap=None, dir=img_dir, str_list=ssim_list)
     
-    noise = torch.randn((batch_size,img_channels if merge_first == True else 1 ,labels.shape[-2],labels.shape[-1])).to('cuda')
+    noise = torch.randn((batch_size,img_channels if merge_first == True else 1 ,int(labels.shape[-2]),int(labels.shape[-1]))).to('cuda')
     print(f'noise shape {noise.shape}')
     outs_noise = model.sample_backward(img=noise, device='cuda',skip_to=None).to('cpu').permute(0,2,3,1)
     print(f'outs_noise.shape {outs_noise.shape}')
@@ -152,12 +152,12 @@ def sample_cfg(diffusion_model_dir:str,
     return outs_diffusion_rgb
 
 if __name__ == '__main__':
-    sample_cfg(diffusion_model_dir='./DiffusionModel/ckpts_imgnet64_50000/epoch=59-val_loss=0.0579.ckpt',
+    sample_cfg(diffusion_model_dir='./DiffusionModel/ckpts_imgnet64_50000/epoch=499-val_loss=0.0108.ckpt',
                batch_size=5,
-               dataset_type='imgnet64',
+               dataset_type='imgnet32',
                img_channels=3,
                cfg_weight=None,
-               skip_to=8,
+               skip_to=10,
                reconstruction_model_dir='./ReconstructionModel/ckpts_imgnet64_50000/epoch=29-val_loss=0.1146.ckpt',
                img_dir='imgs',
                merge_first=True)
