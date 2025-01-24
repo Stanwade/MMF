@@ -351,19 +351,24 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
         
         # dims = [base_channels, base_channels, base_channels*2, base_channels*4, base_channels*4]
+        self.base_channels = base_channels
+        self.ch_mult = ch_mult
         self.levels = len(ch_mult)
         dims = [base_channels] + [int(base_channels * mult) for mult in ch_mult]
         self.with_attn = [with_attn] * self.levels if isinstance(with_attn, bool) else with_attn
         
         in_out = list(zip(dims[:-1], dims[1:], self.with_attn[:-1]))
+        self.in_out = in_out
 
-        
+        self.base_channels = base_channels
         if with_cond:
             if condition_channels == 0:
                 raise ValueError("Condition channels must be greater than 0 if with_cond is True!")
             self.in_proj = nn.Conv2d(img_channels+condition_channels, base_channels, 3, padding=1, stride=1)
+            self.in_channels = img_channels+condition_channels
         else:
             self.in_proj = nn.Conv2d(img_channels, base_channels, 3, padding=1, stride=1)
+            self.in_channels = img_channels
         self.out_proj = nn.Sequential(
             # nn.GroupNorm(32, base_channels),
             # nn.Mish(),
