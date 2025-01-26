@@ -265,12 +265,12 @@ class Downsample(nn.Module):
         super(Downsample, self).__init__()
         out_channels = default(out_channels, in_channels)
         if use_conv:
-            self.op = nn.Conv2d(in_channels, out_channels, 3, stride=2, padding=1)
+            self.down = nn.Conv2d(in_channels, out_channels, 3, stride=2, padding=1)
         else:
-            self.op = nn.MaxPool2d(2, 2)
+            self.down = nn.MaxPool2d(2, 2)
             
     def forward(self, x: torch.Tensor):
-        return self.op(x)
+        return self.down(x)
 
 
 # UNet Level

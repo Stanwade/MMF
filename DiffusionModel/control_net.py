@@ -1,5 +1,6 @@
 import pytorch_lightning as pl
 import torch
+import torch.nn.functional as F
 from .diffusion import DiffusionModel
 from .networks import UNetLevel, Downsample, Upsample
 
@@ -112,6 +113,7 @@ class Controlled_UNet_Level(pl.LightningModule):
                  downs_block,
                  frozen_downs_block,
                  down_block,
+                 frozen_down_block,
                  mid_block,
                  up_block,
                  frozen_ups_block):                                 
@@ -123,6 +125,7 @@ class Controlled_UNet_Level(pl.LightningModule):
         self.up = up_block
         self.downs = downs_block
         self.down = down_block
+        self.frozen_down = frozen_down_block
         self.mid_block = mid_block
 
     def forward(self, x, t_emb, xc):
@@ -140,6 +143,7 @@ class Controlled_UNet_Level(pl.LightningModule):
                 hs.append(x)
 
         x = self.down(x)
+        xc = self.frozen_down(xc)
         x = self.mid_block(x, t_emb, xc)
         x = self.up(x)
         
@@ -178,32 +182,35 @@ class Controlled_UNet(pl.LightningModule):
         
         # build control net
         self.hint_in_proj = zero_convolution(hint_channels, self.diffusion_model.unet.base_channels, 1, 1, 0)
-        self.x_in_proj = self.diffusion_model.unet.in_proj
-        self.controlnet = torch.nn.ModuleList([])
+        self.x_in_proj = self.diffusion_model.unet.in_proj.requires_grad_(False).eval()
+        self.hint_out_proj = zero_convolution(self.diffusion_model.unet.base_channels, hint_channels, 1, 1, 0)
+        self.x_out_proj = self.diffusion_model.unet.out_proj.requires_grad_(False).eval()
         self.in_out = self.diffusion_model.unet.in_out
         
         # start from mid_block
         frozen_unet_encoder = Unet_Encoder(diffusion_model_dir, map_location).encoder.requires_grad_(False).eval()
         trainable_unet_encoder = Unet_Encoder(diffusion_model_dir, map_location).encoder
-        frozen_mid_block = frozen_unet_encoder[-1]
-        trainable_mid_block = trainable_unet_encoder[-1]
+        frozen_mid_block = frozen_unet_encoder.pop()
+        trainable_mid_block = trainable_unet_encoder.pop()
+        frozen_unet_decoder = Unet_Decoder(diffusion_model_dir, map_location).decoder.requires_grad_(False).eval()
 
         now_blocks = Controlled_midblock(trainable_mid_block, frozen_mid_block, self.diffusion_model.unet.base_channels*self.diffusion_model.unet.ch_mult[-1])
-
-        # TODO: haven't checked the correctness of the following code
-        for inout_ch, mid_ch, _ in reversed(self.in_out):
-            downs_block = frozen_unet_encoder.pop()
+        # TODO: haven't checked the correctness of the following code 20250124
+        for inout, mid, _ in reversed(self.diffusion_model.unet.in_out):
+            trainable_down_block = trainable_unet_encoder.pop()
+            trainable_downs_block = trainable_unet_encoder.pop()
+            frozen_down_block = frozen_unet_encoder.pop()
             frozen_downs_block = frozen_unet_encoder.pop()
-            down_block = frozen_unet_encoder.pop()
-            mid_block = now_blocks
-            up_block = frozen_unet_encoder.pop()
-            frozen_ups_block = frozen_unet_encoder.pop()
-            now_blocks = Controlled_UNet_Level(inout_ch, mid_ch, downs_block, frozen_downs_block, down_block, mid_block, up_block, frozen_ups_block)
-            self.controlnet.insert(0, now_blocks)
+            frozen_up_block = frozen_unet_decoder.pop(0)
+            frozen_ups_block = frozen_unet_decoder.pop(0)
+            now_blocks = Controlled_UNet_Level(inout, mid, trainable_downs_block, frozen_downs_block, trainable_down_block,frozen_down_block, now_blocks, frozen_up_block, frozen_ups_block)
 
+        self.controlnet = now_blocks
 
     def forward(self, x, t, hint):
         # project hint to the same dimension as x
+        if (hint.shape[-1], hint.shape[-2]) != (x.shape[-1], x.shape[-2]):
+            hint = F.interpolate(hint, (x.shape[-2], x.shape[-1]), mode='bilinear')
         hint = self.hint_in_proj(hint)
         x = self.x_in_proj(x)
         xc = x + hint
@@ -212,49 +219,29 @@ class Controlled_UNet(pl.LightningModule):
         t_enc = self.diffusion_model.unet.pe(t)
         t_emb = self.diffusion_model.unet.pe_linears(t_enc)
         # get encoder output
-        control = []
+        x = self.controlnet(x, t_emb, xc)
         
-        # get control from the encoder output
-        def apply_layers(layers, x, t_emb):
-            for layer in layers:
-                if isinstance(layer, torch.nn.ModuleList):
-                    x = apply_layers(layer, x, t_emb)
-                elif isinstance(layer, torch.nn.Conv2d):
-                    x = layer(x)
-                elif isinstance(layer, Downsample):
-                    x = layer(x)
-                else:
-                    x = layer(x, t_emb)
-                control.append(x)
-            return x
-        apply_layers(self.controlnet, hint, t_emb)
         
-        # pass through the controlnet
-        x_control = x
-        for i, layer in enumerate(self.controlnet):
-           if i ==0:
-             x_control = layer(x_control, t_emb)
-           else:
-            x_control = layer(x_control, t_emb, control[::-1][i-1])
-
         # add control output to the original output
-        return self.diffusion_model.unet(x, t) + x_control
+        return self.x_out_proj(x) + self.hint_out_proj(x)
 
 
-copyed_encoder = Unet_Encoder().to('cuda')
-copyed_decoder = Unet_Decoder().to('cuda')
-# print(copyed_encoder.encoder)
-# print(copyed_decoder.decoder)
+if __name__ == '__main__':
+
+    copyed_encoder = Unet_Encoder().to('cuda')
+    copyed_decoder = Unet_Decoder().to('cuda')
+    print(copyed_encoder.encoder)
+    print(copyed_decoder.decoder)
 
 
-bs = 5
-x = torch.randn(bs, 3, 64, 64).to('cuda')
-hint = torch.randn(bs, 3, 64, 64).to('cuda')
-t = [int(100)] * bs
-# send t to cuda
-t = torch.tensor(t).to('cuda')
-x = copyed_encoder(x, t)
-print(x.shape)
+    bs = 5
+    x = torch.randn(bs, 3, 64, 64).to('cuda')
+    hint = torch.randn(bs, 3, 64, 64).to('cuda')
+    t = [int(100)] * bs
+    # send t to cuda
+    t = torch.tensor(t).to('cuda')
+    x = copyed_encoder(x, t)
+    print(x.shape)
 
-x = copyed_decoder(x, t)
-print(x.shape)
+    x = copyed_decoder(x, t)
+    print(x.shape)
