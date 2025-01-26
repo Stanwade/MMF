@@ -29,7 +29,7 @@ class Unet_Encoder(pl.LightningModule):
             mid_block = mid_block.mid_block
         self.encoder.append(mid_block)
 
-        print(f'encoder length: {len(self.encoder)}')
+        # print(f'encoder length: {len(self.encoder)}')
         self.pe =model.unet.pe
         self.pe_proj = model.unet.pe_linears
         self.in_proj = model.unet.in_proj
@@ -74,7 +74,7 @@ class Unet_Decoder(pl.LightningModule):
             self.decoder.insert(0, mid_block.up)
             mid_block = mid_block.mid_block
         # self.decoder.insert(0, mid_block)
-        print(f'decoder length: {len(self.decoder)}')
+        # print(f'decoder length: {len(self.decoder)}')
         # print(self.decoder)
         # without mid_block
         self.out_proj = model.unet.out_proj
@@ -131,7 +131,7 @@ class Controlled_UNet_Level(pl.LightningModule):
         # self.control_ups = torch.nn.ModuleList([zero_convolution(mid_channels, inout_channels*2, 1, 1, 0),
         #                                         zero_convolution(inout_channels*2, inout_channels, 1, 1, 0)])
         # TODO: Ups should be FREEZE!
-        self.up = up_block
+        self.up = up_block.requires_grad_(False).eval()
         self.downs = downs_block
         self.down = down_block
         self.frozen_down = frozen_down_block
@@ -156,8 +156,8 @@ class Controlled_UNet_Level(pl.LightningModule):
         x = self.mid_block(x, t_emb, xc)
         x = self.up(x)
         # print control_ups info
-        print(self.frozen_ups)
-        print(self.control_ups)
+        # print(self.frozen_ups)
+        # print(self.control_ups)
         
         # pass through upsample layers and fuse control
         for i, up in enumerate(self.frozen_ups):
@@ -167,7 +167,7 @@ class Controlled_UNet_Level(pl.LightningModule):
                 x = torch.cat((h,x), dim=1)
                 x = up(x, t_emb)
             cont = self.control_ups[i](cont)
-            print(f'Control shape: {cont.shape}, Output shape: {x.shape}')
+            # print(f'Control shape: {cont.shape}, Output shape: {x.shape}')
             x = x + cont
         
         return x
@@ -250,8 +250,9 @@ if __name__ == '__main__':
 
 
     bs = 5
-    x = torch.randn(bs, 3, 64, 64).to('cuda')
-    hint = torch.randn(bs, 3, 64, 64).to('cuda')
+    h = w = 32
+    x = torch.randn(bs, 3, h, w).to('cuda')
+    hint = torch.randn(bs, 3, h, w).to('cuda')
     t = [int(100)] * bs
     # send t to cuda
     t = torch.tensor(t).to('cuda')
@@ -262,8 +263,8 @@ if __name__ == '__main__':
     print(x.shape)
 
     controlled_unet = Controlled_UNet().to('cuda')
-    x = torch.randn(bs, 3, 64, 64).to('cuda')
-    hint = torch.randn(bs, 3, 64, 64).to('cuda')
+    x = torch.randn(bs, 3, h, w).to('cuda')
+    hint = torch.randn(bs, 3, h, w).to('cuda')
     t = [int(100)] * bs
     # send t to cuda
     t = torch.tensor(t).to('cuda')
