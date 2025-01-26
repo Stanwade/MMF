@@ -2,7 +2,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 from .diffusion import DiffusionModel
-from .networks import UNetLevel, Downsample, Upsample
+from .networks import UNetLevel, Downsample, Upsample, SelfAttnBlock, ResAttnBlock
 
 class zero_convolution(torch.nn.Conv2d):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding, bias=False):
@@ -120,7 +120,16 @@ class Controlled_UNet_Level(pl.LightningModule):
         super(Controlled_UNet_Level, self).__init__()
         self.frozen_downs = frozen_downs_block
         self.frozen_ups = frozen_ups_block
-        self.control_ups = torch.nn.ModuleList([zero_convolution(mid_channels*2, inout_channels, 1, 1, 0)]*len(frozen_ups_block))
+        # build control ups
+        self.control_ups = torch.nn.ModuleList([])
+        
+        for layer in self.frozen_ups:
+            if isinstance(layer, ResAttnBlock):
+                self.control_ups.append(zero_convolution(layer.in_channels//2, layer.out_channels, 1, 1, 0))
+            else:
+                self.control_ups.append(torch.nn.Identity())
+        # self.control_ups = torch.nn.ModuleList([zero_convolution(mid_channels, inout_channels*2, 1, 1, 0),
+        #                                         zero_convolution(inout_channels*2, inout_channels, 1, 1, 0)])
         # TODO: Ups should be FREEZE!
         self.up = up_block
         self.downs = downs_block
@@ -146,14 +155,20 @@ class Controlled_UNet_Level(pl.LightningModule):
         xc = self.frozen_down(xc)
         x = self.mid_block(x, t_emb, xc)
         x = self.up(x)
+        # print control_ups info
+        print(self.frozen_ups)
+        print(self.control_ups)
         
         # pass through upsample layers and fuse control
         for i, up in enumerate(self.frozen_ups):
             h = hs.pop()
             cont = controls.pop()
             with torch.no_grad():
-                x = up(torch.concat((h,x), dim=1), t_emb)
-            x += self.control_ups[i](cont)
+                x = torch.cat((h,x), dim=1)
+                x = up(x, t_emb)
+            cont = self.control_ups[i](cont)
+            print(f'Control shape: {cont.shape}, Output shape: {x.shape}')
+            x = x + cont
         
         return x
 
@@ -190,17 +205,17 @@ class Controlled_UNet(pl.LightningModule):
         # start from mid_block
         frozen_unet_encoder = Unet_Encoder(diffusion_model_dir, map_location).encoder.requires_grad_(False).eval()
         trainable_unet_encoder = Unet_Encoder(diffusion_model_dir, map_location).encoder
-        frozen_mid_block = frozen_unet_encoder.pop()
-        trainable_mid_block = trainable_unet_encoder.pop()
+        frozen_mid_block = frozen_unet_encoder.pop(-1)
+        trainable_mid_block = trainable_unet_encoder.pop(-1)
         frozen_unet_decoder = Unet_Decoder(diffusion_model_dir, map_location).decoder.requires_grad_(False).eval()
 
         now_blocks = Controlled_midblock(trainable_mid_block, frozen_mid_block, self.diffusion_model.unet.base_channels*self.diffusion_model.unet.ch_mult[-1])
         # TODO: haven't checked the correctness of the following code 20250124
         for inout, mid, _ in reversed(self.diffusion_model.unet.in_out):
-            trainable_down_block = trainable_unet_encoder.pop()
-            trainable_downs_block = trainable_unet_encoder.pop()
-            frozen_down_block = frozen_unet_encoder.pop()
-            frozen_downs_block = frozen_unet_encoder.pop()
+            trainable_down_block = trainable_unet_encoder.pop(-1)
+            trainable_downs_block = trainable_unet_encoder.pop(-1)
+            frozen_down_block = frozen_unet_encoder.pop(-1)
+            frozen_downs_block = frozen_unet_encoder.pop(-1)
             frozen_up_block = frozen_unet_decoder.pop(0)
             frozen_ups_block = frozen_unet_decoder.pop(0)
             now_blocks = Controlled_UNet_Level(inout, mid, trainable_downs_block, frozen_downs_block, trainable_down_block,frozen_down_block, now_blocks, frozen_up_block, frozen_ups_block)
@@ -244,4 +259,13 @@ if __name__ == '__main__':
     print(x.shape)
 
     x = copyed_decoder(x, t)
+    print(x.shape)
+
+    controlled_unet = Controlled_UNet().to('cuda')
+    x = torch.randn(bs, 3, 64, 64).to('cuda')
+    hint = torch.randn(bs, 3, 64, 64).to('cuda')
+    t = [int(100)] * bs
+    # send t to cuda
+    t = torch.tensor(t).to('cuda')
+    x = controlled_unet(x, t, hint)
     print(x.shape)
