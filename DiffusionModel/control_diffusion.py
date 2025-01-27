@@ -141,7 +141,7 @@ class ControlDiffusionModel(pl.LightningModule):
         x0_pred = self.sample_backward(hint, device=self.device, cfg_scale=7.5, skip_to=1000, xt=None)
         
         def normalize_img_0_1(image):
-            return (image - image.min()) / (image.max() - image.min())
+            return (image - image.min()) / (image.max() - image.min() + 1e-8)
         
         x_degraded_log = normalize_img_0_1(hint.cpu())
         x_restored_log = normalize_img_0_1(x0_pred.cpu())
