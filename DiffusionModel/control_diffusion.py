@@ -20,7 +20,8 @@ class ControlDiffusionModel(pl.LightningModule):
                                                                    map_location=map_locations)
         # ControlNet，用于条件分支
         self.control_net = Controlled_UNet(reconstruction_model_dir, 
-                                           map_location=map_locations)
+                                           map_location=map_locations,
+                                           hint_channels=hint_channels)
         
         # 从diffusion_model中获取关键参数
         self.alpha_bars = self.diffusion_model.alpha_bars
