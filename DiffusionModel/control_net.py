@@ -124,6 +124,7 @@ class Controlled_UNet_Level(pl.LightningModule):
         self.mid_block = mid_block
 
     def forward(self, x, t_emb, xc):
+        scale = x.shape(-1)
         hs = []
         controls = []
         # calculate control
@@ -155,7 +156,7 @@ class Controlled_UNet_Level(pl.LightningModule):
             cont = self.control_ups[i](cont)
             # print(f'max value of cont: {torch.max(cont)}')
             # print(f'Control shape: {cont.shape}, Output shape: {x.shape}')
-            x = x + cont
+            x = x + cont * (64/scale)
         
         return x
 
@@ -170,10 +171,11 @@ class Controlled_midblock(pl.LightningModule):
         self.control_mid = zero_convolution(mid_block_channels, mid_block_channels, 1, 1, 0)
     
     def forward(self, x, t_emb, xc):
+        scale = x.shape(-1)
         cont = self.control_mid(self.trainable_mid_block(xc, t_emb))
         # print(f'max value of cont: {torch.max(cont)}')
         x = self.frozen_mid_block(x, t_emb)
-        return x + cont
+        return x + cont * (64/scale)
 
 class Controlled_UNet(pl.LightningModule):
     def __init__(self, 
