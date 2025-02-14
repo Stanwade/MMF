@@ -112,6 +112,7 @@ class DiffusionModel(pl.LightningModule):
             product *= alphas[i]
             alpha_bars[i] = product
         
+        self.alpha_bars = alpha_bars.requires_grad_(False)
         self.register_buffer('alpha_bars',alpha_bars)
     
     @torch.no_grad()
