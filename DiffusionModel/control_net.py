@@ -155,7 +155,7 @@ class Controlled_UNet_Level(pl.LightningModule):
             cont = self.control_ups[i](cont)
             # print(f'max value of cont: {torch.max(cont)}')
             # print(f'Control shape: {cont.shape}, Output shape: {x.shape}')
-            x = x + cont
+            x = x + cont * (64/x.shape[-1]) # resolution weighting
         
         return x
 
