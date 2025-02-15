@@ -13,7 +13,7 @@ class zero_convolution(torch.nn.Conv2d):
             self.bias.data.fill_(0)
 
 
-class Unet_Encoder(pl.LightningModule):
+class Unet_Encoder(pl.LightningModule): # with middle block of unet
     def __init__(self, unet):  # 接收unet实例而非路径
         super(Unet_Encoder, self).__init__()
         self.encoder = torch.nn.ModuleList([])
@@ -69,7 +69,8 @@ class Unet_Decoder(pl.LightningModule):
         self.pe_proj = unet.pe_linears
     
     def forward(self, x, t):
-        
+        # This is only a test funcion, don't call it!
+        # cat 0s to x is simulating skip connection
         # print(f'Input shape: {x.shape}')
         t_enc = self.pe(t)
         t_emb = self.pe_proj(t_enc)
