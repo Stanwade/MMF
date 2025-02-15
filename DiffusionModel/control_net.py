@@ -281,6 +281,6 @@ if __name__ == '__main__':
         x_o = controlled_unet.diffusion_model.unet(x_in, t)
         x_copy = controlled_unet(x_in, t, hint)
     print(x_copy.shape)
-    # double git repo test
+    # single push test
     print(torch.max(x_copy - x_o))
     print(torch.min(x_copy - x_o))
