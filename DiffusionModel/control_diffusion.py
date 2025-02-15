@@ -19,9 +19,13 @@ class ControlDiffusionModel(pl.LightningModule):
         self.diffusion_model = DiffusionModel.load_from_checkpoint(diffusion_model_dir, 
                                                                    map_location=map_locations)
         # ControlNet，用于条件分支
-        self.control_net = Controlled_UNet(reconstruction_model_dir, 
+        self.control_net = Controlled_UNet(diffusion_model_dir, 
                                            map_location=map_locations,
                                            hint_channels=hint_channels)
+        
+        # freeze diffusion model
+        for param in self.diffusion_model.parameters():
+            param.requires_grad = False
         
         # 从diffusion_model中获取关键参数
         self.alpha_bars = self.diffusion_model.alpha_bars
@@ -232,50 +236,51 @@ class ControlDiffusionModel(pl.LightningModule):
         """
         每个验证batch结束后，进行一次采样并可视化结果。
         """
-        hint = outputs['hint'].to(self.device)
-        x0 = outputs['x0'].to(self.device)
-        
-        # 1. DDPM 完整采样
-        x0_pred_ddpm = self.sample_backward(hint, 
-                                            device=self.device, 
-                                            cfg_scale=7.5, 
-                                            skip_to=self.n_steps, 
-                                            xt=None)
+        if batch_idx == 0:
+            hint = outputs['hint'].to(self.device)
+            x0 = outputs['x0'].to(self.device)
+            
+            # 1. DDPM 完整采样
+            x0_pred_ddpm = self.sample_backward(hint, 
+                                                device=self.device, 
+                                                cfg_scale=7.5, 
+                                                skip_to=self.n_steps, 
+                                                xt=None)
 
-        # 2. DDIM 加速采样(例如50步)
-        x0_pred_ddim = self.sample_backward_ddim(hint,
-                                                 device=self.device,
-                                                 cfg_scale=7.5,
-                                                 skip_to=self.n_steps,
-                                                 steps=50,      # 仅示例，可自行调整
-                                                 eta=0.0,       # 0为确定性
-                                                 xt=None)
-        
-        # 归一化到[0,1]用于可视化
-        def normalize_img_0_1(image):
-            return (image - image.min()) / (image.max() - image.min())
-        
-        x_hint_log = normalize_img_0_1(hint.cpu())
-        x_ddpm_log = normalize_img_0_1(x0_pred_ddpm.cpu())
-        x_ddim_log = normalize_img_0_1(x0_pred_ddim.cpu())
-        x_gt_log   = normalize_img_0_1(x0.cpu())
-        
-        # 仅可视化前5个
-        log_images = []
-        for i in range(min(5, hint.size(0))):
-            log_images.extend([
-                {"image": x_hint_log[i], "caption": f"Hint_BatchIdx_{batch_idx}_Img_{i}"},
-                {"image": x_ddpm_log[i], "caption": f"DDPM_BatchIdx_{batch_idx}_Img_{i}"},
-                {"image": x_ddim_log[i], "caption": f"DDIM_BatchIdx_{batch_idx}_Img_{i}"},
-                {"image": x_gt_log[i],   "caption": f"GT_BatchIdx_{batch_idx}_Img_{i}"}
-            ])
+            # 2. DDIM 加速采样(例如50步)
+            x0_pred_ddim = self.sample_backward_ddim(hint,
+                                                    device=self.device,
+                                                    cfg_scale=7.5,
+                                                    skip_to=self.n_steps,
+                                                    steps=50,      # 仅示例，可自行调整
+                                                    eta=0.0,       # 0为确定性
+                                                    xt=None)
+            
+            # 归一化到[0,1]用于可视化
+            def normalize_img_0_1(image):
+                return (image - image.min()) / (image.max() - image.min())
+            
+            x_hint_log = normalize_img_0_1(hint.cpu())
+            x_ddpm_log = normalize_img_0_1(x0_pred_ddpm.cpu())
+            x_ddim_log = normalize_img_0_1(x0_pred_ddim.cpu())
+            x_gt_log   = normalize_img_0_1(x0.cpu())
+            
+            # 仅可视化前5个
+            log_images = []
+            for i in range(min(5, hint.size(0))):
+                log_images.extend([
+                    {"image": x_hint_log[i], "caption": f"Hint_BatchIdx_{batch_idx}_Img_{i}"},
+                    {"image": x_ddpm_log[i], "caption": f"DDPM_BatchIdx_{batch_idx}_Img_{i}"},
+                    {"image": x_ddim_log[i], "caption": f"DDIM_BatchIdx_{batch_idx}_Img_{i}"},
+                    {"image": x_gt_log[i],   "caption": f"GT_BatchIdx_{batch_idx}_Img_{i}"}
+                ])
 
-        # 将图像日志记录到logger
-        self.logger.log_images(
-            key=f"Validation_Batch_{batch_idx}",
-            images=log_images,
-            step=self.global_step,
-        )
+            # 将图像日志记录到logger
+            self.logger.log_images(
+                key=f"Validation_Batch_{batch_idx}",
+                images=log_images,
+                step=self.global_step,
+            )
         
     def configure_optimizers(self):
         # 例子：使用Lion优化器

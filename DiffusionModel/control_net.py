@@ -1,5 +1,6 @@
 import pytorch_lightning as pl
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from .diffusion import DiffusionModel
 from .networks import UNetLevel, Downsample, Upsample, SelfAttnBlock, ResAttnBlock
@@ -189,7 +190,20 @@ class Controlled_UNet(pl.LightningModule):
         origin_unet = self.diffusion_model.unet
         
         # build control net
-        self.hint_in_proj = zero_convolution(hint_channels, origin_unet.base_channels, 1, 1, 0)
+        self.hint_in_proj = nn.Sequential(
+            nn.Conv2d(hint_channels, origin_unet.base_channels//4, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(origin_unet.base_channels//4, origin_unet.base_channels//4, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(origin_unet.base_channels//4, origin_unet.base_channels//2, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(origin_unet.base_channels//2, origin_unet.base_channels, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(origin_unet.base_channels, origin_unet.base_channels, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            zero_convolution(origin_unet.base_channels, origin_unet.base_channels, 1, 1, 0)
+        )
+        # self.hint_in_proj = zero_convolution(hint_channels, origin_unet.base_channels, 1, 1, 0)
         self.x_in_proj = origin_unet.in_proj.requires_grad_(False).eval()
         self.x_out_proj = origin_unet.out_proj.requires_grad_(False).eval()
         self.in_out = origin_unet.in_out
