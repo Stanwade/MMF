@@ -16,57 +16,57 @@ class zero_convolution(torch.nn.Conv2d):
 class Unet_Encoder(pl.LightningModule): # with middle block of unet
     def __init__(self, unet):  # 接收unet实例而非路径
         super(Unet_Encoder, self).__init__()
-        self.encoder = torch.nn.ModuleList([])
-        mid_block = unet.unet.mid_block
-        self.encoder.append(unet.unet.downs)
-        self.encoder.append(unet.unet.down)
-        while isinstance(mid_block, UNetLevel):
-            self.encoder.append(mid_block.downs)
-            self.encoder.append(mid_block.down)
-            mid_block = mid_block.mid_block
-        self.encoder.append(mid_block)
+        self.encoder = self._build_encoder(unet)
         self.pe = unet.pe
         self.pe_proj = unet.pe_linears
         self.in_proj = unet.in_proj
+
+    def _build_encoder(self, unet):
+        encoder = torch.nn.ModuleList([])
+        mid_block = unet.unet.mid_block
+        encoder.append(unet.unet.downs)
+        encoder.append(unet.unet.down)
+        while isinstance(mid_block, UNetLevel):
+            encoder.append(mid_block.downs)
+            encoder.append(mid_block.down)
+            mid_block = mid_block.mid_block
+        encoder.append(mid_block)
+        return encoder
 
     def forward(self, x, t):
         x = self.in_proj(x)
         t_enc = self.pe(t)
         t_emb = self.pe_proj(t_enc)
-        control = []
+        return self._apply_layers(self.encoder, x, t_emb)
 
-        def apply_layers(layers, x, t_emb):
-            for layer in layers:
-                # print layer info
-                # print(layer)
-                if isinstance(layer, torch.nn.ModuleList):
-                    # 如果是 ModuleList，递归调用
-                    x = apply_layers(layer, x, t_emb)
-                elif isinstance(layer, torch.nn.Conv2d):
-                    x = layer(x)
-                elif isinstance(layer, Downsample):
-                    x = layer(x)
-                else:
-                    x = layer(x, t_emb)
-            return x
-
-        x = apply_layers(self.encoder, x, t_emb)
+    def _apply_layers(self, layers, x, t_emb):
+        for layer in layers:
+            if isinstance(layer, torch.nn.ModuleList):
+                x = self._apply_layers(layer, x, t_emb)
+            elif isinstance(layer, torch.nn.Conv2d) or isinstance(layer, Downsample):
+                x = layer(x)
+            else:
+                x = layer(x, t_emb)
         return x
 
 class Unet_Decoder(pl.LightningModule):
     def __init__(self, unet):  # 接收unet实例
         super(Unet_Decoder, self).__init__()
-        self.decoder = torch.nn.ModuleList([])
-        mid_block = unet.unet.mid_block
-        self.decoder.insert(0, unet.unet.ups)
-        self.decoder.insert(0, unet.unet.up)
-        while isinstance(mid_block, UNetLevel):
-            self.decoder.insert(0, mid_block.ups)
-            self.decoder.insert(0, mid_block.up)
-            mid_block = mid_block.mid_block
+        self.decoder = self._build_decoder(unet)
         self.out_proj = unet.out_proj
         self.pe = unet.pe
         self.pe_proj = unet.pe_linears
+
+    def _build_decoder(self, unet):
+        decoder = torch.nn.ModuleList([])
+        mid_block = unet.unet.mid_block
+        decoder.insert(0, unet.unet.ups)
+        decoder.insert(0, unet.unet.up)
+        while isinstance(mid_block, UNetLevel):
+            decoder.insert(0, mid_block.ups)
+            decoder.insert(0, mid_block.up)
+            mid_block = mid_block.mid_block
+        return decoder
     
     def forward(self, x, t):
         # This is only a test funcion, don't call it!
@@ -75,23 +75,24 @@ class Unet_Decoder(pl.LightningModule):
         t_enc = self.pe(t)
         t_emb = self.pe_proj(t_enc)
         x = torch.cat((x, torch.zeros_like(x)), dim=1)
-        def apply_layers(layers, x, t_emb):
-            for idx, layer in enumerate(layers):
-                # print(f'Layer: {layer.__class__.__name__}, Input shape: {x.shape}')
-                if isinstance(layer, torch.nn.ModuleList):
-                    x = apply_layers(layer, x, t_emb)
-                elif isinstance(layer, Upsample):
-                    x = layer(x)
-                else:
-                    x = layer(x, t_emb)
-                if idx != (len(layers) - 1) and (not isinstance(layer, Upsample)):
-                    x = torch.cat((x, torch.zeros_like(x)), dim=1)
-                    # print(f'layer idx {idx}, After concat, Output shape: {x.shape}')
-                # print(f'After {layer.__class__.__name__}, Output shape: {x.shape}')
-                
-            return x
-        x = apply_layers(self.decoder, x, t_emb)
+        x = self._apply_layers(self.decoder, x, t_emb)
         return self.out_proj(x)
+
+    def _apply_layers(self, layers, x, t_emb):
+        for idx, layer in enumerate(layers):
+            # print(f'Layer: {layer.__class__.__name__}, Input shape: {x.shape}')
+            if isinstance(layer, torch.nn.ModuleList):
+                x = self._apply_layers(layer, x, t_emb)
+            elif isinstance(layer, Upsample):
+                x = layer(x)
+            else:
+                x = layer(x, t_emb)
+            if idx != (len(layers) - 1) and (not isinstance(layer, Upsample)):
+                x = torch.cat((x, torch.zeros_like(x)), dim=1)
+                # print(f'layer idx {idx}, After concat, Output shape: {x.shape}')
+            # print(f'After {layer.__class__.__name__}, Output shape: {x.shape}')
+                
+        return x
 
 
 class Controlled_UNet_Level(pl.LightningModule):
@@ -104,10 +105,12 @@ class Controlled_UNet_Level(pl.LightningModule):
                  frozen_down_block,
                  mid_block,
                  up_block,
-                 frozen_ups_block):                                 
+                 frozen_ups_block,
+                 control_scale=64):                                 
         super(Controlled_UNet_Level, self).__init__()
         self.frozen_downs = frozen_downs_block
         self.frozen_ups = frozen_ups_block
+        self.control_scale = control_scale
         # build control ups
         self.control_ups = torch.nn.ModuleList([])
         
@@ -126,7 +129,7 @@ class Controlled_UNet_Level(pl.LightningModule):
         self.mid_block = mid_block
 
     def forward(self, x, t_emb, xc):
-        scale = x.shape(-1)
+        scale = x.shape[-1]
         hs = []
         controls = []
         # calculate control
@@ -158,7 +161,7 @@ class Controlled_UNet_Level(pl.LightningModule):
             cont = self.control_ups[i](cont)
             # print(f'max value of cont: {torch.max(cont)}')
             # print(f'Control shape: {cont.shape}, Output shape: {x.shape}')
-            x = x + cont * (64/scale)
+            x = x + cont * (self.control_scale / scale)
         
         return x
 
@@ -166,18 +169,19 @@ class Controlled_midblock(pl.LightningModule):
     def __init__(self,
                  trainable_mid_block,
                  frozen_mid_block,
-                 mid_block_channels):
+                 mid_block_channels,
+                 control_scale=64):
         super(Controlled_midblock, self).__init__()
         self.frozen_mid_block = frozen_mid_block.requires_grad_(False).eval()
         self.trainable_mid_block = trainable_mid_block
         self.control_mid = zero_convolution(mid_block_channels, mid_block_channels, 1, 1, 0)
     
     def forward(self, x, t_emb, xc):
-        scale = x.shape(-1)
+        scale = x.shape[-1]  # Corrected from shape(-1) to shape[-1]
         cont = self.control_mid(self.trainable_mid_block(xc, t_emb))
         # print(f'max value of cont: {torch.max(cont)}')
         x = self.frozen_mid_block(x, t_emb)
-        return x + cont * (64/scale)
+        return x + cont * (self.control_scale / scale)
 
 class Controlled_UNet(pl.LightningModule):
     def __init__(self, 
@@ -191,20 +195,7 @@ class Controlled_UNet(pl.LightningModule):
         origin_unet = self.diffusion_model.unet
         
         # build control net
-        self.hint_in_proj = nn.Sequential(
-            nn.Conv2d(hint_channels, origin_unet.base_channels//4, kernel_size=3, stride=1, bias=False, padding=1),
-            nn.SiLU(),
-            nn.Conv2d(origin_unet.base_channels//4, origin_unet.base_channels//4, kernel_size=3, stride=1, bias=False, padding=1),
-            nn.SiLU(),
-            nn.Conv2d(origin_unet.base_channels//4, origin_unet.base_channels//2, kernel_size=3, stride=1, bias=False, padding=1),
-            nn.SiLU(),
-            nn.Conv2d(origin_unet.base_channels//2, origin_unet.base_channels, kernel_size=3, stride=1, bias=False, padding=1),
-            nn.SiLU(),
-            nn.Conv2d(origin_unet.base_channels, origin_unet.base_channels, kernel_size=3, stride=1, bias=False, padding=1),
-            nn.SiLU(),
-            zero_convolution(origin_unet.base_channels, origin_unet.base_channels, 1, 1, 0)
-        )
-        # self.hint_in_proj = zero_convolution(hint_channels, origin_unet.base_channels, 1, 1, 0)
+        self.hint_in_proj = self._build_hint_in_proj(hint_channels, origin_unet)
         self.x_in_proj = origin_unet.in_proj.requires_grad_(False).eval()
         self.x_out_proj = origin_unet.out_proj.requires_grad_(False).eval()
         self.in_out = origin_unet.in_out
@@ -228,6 +219,38 @@ class Controlled_UNet(pl.LightningModule):
             now_blocks = Controlled_UNet_Level(inout, mid, trainable_downs_block, frozen_downs_block, trainable_down_block,frozen_down_block, now_blocks, frozen_up_block, frozen_ups_block)
 
         self.controlnet = now_blocks
+
+    def _build_hint_in_proj(self, hint_channels, origin_unet):
+        return nn.Sequential(
+            nn.Conv2d(hint_channels, origin_unet.base_channels//4, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(origin_unet.base_channels//4, origin_unet.base_channels//4, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(origin_unet.base_channels//4, origin_unet.base_channels//2, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(origin_unet.base_channels//2, origin_unet.base_channels, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(origin_unet.base_channels, origin_unet.base_channels, kernel_size=3, stride=1, bias=False, padding=1),
+            nn.SiLU(),
+            zero_convolution(origin_unet.base_channels, origin_unet.base_channels, 1, 1, 0)
+        )
+
+    def _build_controlnet(self, origin_unet):
+        frozen_unet_encoder = Unet_Encoder(origin_unet).encoder.requires_grad_(False).eval()
+        trainable_unet_encoder = Unet_Encoder(origin_unet).encoder
+        frozen_mid_block = frozen_unet_encoder.pop(-1)
+        trainable_mid_block = trainable_unet_encoder.pop(-1)
+        frozen_unet_decoder = Unet_Decoder(origin_unet).decoder.requires_grad_(False).eval()
+        now_blocks = Controlled_midblock(trainable_mid_block, frozen_mid_block, self.diffusion_model.unet.base_channels*self.diffusion_model.unet.ch_mult[-1])
+        for inout, mid, _ in reversed(self.diffusion_model.unet.in_out):
+            trainable_down_block = trainable_unet_encoder.pop(-1)
+            trainable_downs_block = trainable_unet_encoder.pop(-1)
+            frozen_down_block = frozen_unet_encoder.pop(-1)
+            frozen_downs_block = frozen_unet_encoder.pop(-1)
+            frozen_up_block = frozen_unet_decoder.pop(0)
+            frozen_ups_block = frozen_unet_decoder.pop(0)
+            now_blocks = Controlled_UNet_Level(inout, mid, trainable_downs_block, frozen_downs_block, trainable_down_block, frozen_down_block, now_blocks, frozen_up_block, frozen_ups_block)
+        return now_blocks
 
     def forward(self, x, t, hint):
         # project hint to the same dimension as x
