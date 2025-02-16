@@ -10,7 +10,6 @@ from .lion_pytorch import Lion
 class ControlDiffusionModel(pl.LightningModule):
     def __init__(self,
                  diffusion_model_dir,
-                 reconstruction_model_dir,
                  map_locations='cuda',
                  hint_channels=3):
         super(ControlDiffusionModel, self).__init__()
